@@ -1,0 +1,55 @@
+# Despliegue del backend en Render.
+#
+# Render lo detecta solo al conectar el repositorio (Blueprint). El frontend NO
+# va aqui: se despliega en Vercel desde la carpeta frontend/.
+#
+# Las variables con sync:false NO se guardan en el repo: hay que rellenarlas a
+# mano en el panel de Render. Son secretos.
+
+services:
+  - type: web
+    name: crm-ferreteria-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+
+    # migrate deploy aplica las migraciones pendientes en cada despliegue.
+    # No usa `migrate dev`: ese es interactivo y puede pedir resetear la base.
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Base de datos (Supabase). DATABASE_URL usa el pooler transaccional
+      # (6543) y DIRECT_URL el de sesion (5432), que es el que necesitan las
+      # migraciones: pgbouncer en modo transaccion no las soporta.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      - key: JWT_SECRET
+        sync: false
+
+      # URL del frontend en Vercel. La usan los enlaces de los correos
+      # (invitaciones, recuperar contraseña).
+      - key: FRONTEND_URL
+        sync: false
+
+      # Almacenamiento de archivos. En Render es OBLIGATORIO: el disco del plan
+      # free es efimero, asi que el respaldo a disco local perderia las imagenes
+      # en cada reinicio o despliegue.
+      - key: BLOB_READ_WRITE_TOKEN
+        sync: false
+
+      # Correo (API de Brevo). Sin esto las invitaciones fallan, y como el
+      # registro publico esta deshabilitado, no se pueden crear usuarios.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false

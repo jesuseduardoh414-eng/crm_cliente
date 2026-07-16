@@ -86,8 +86,18 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// Inicio del servidor (solo si no estamos en Vercel/Producción)
-if (process.env.NODE_ENV !== 'production') {
+// Inicio del servidor.
+//
+// Solo Vercel se salta el listen: es serverless e importa la app, no la
+// arranca. Cualquier otro entorno (local, Render, Railway, un contenedor)
+// necesita escuchar de verdad.
+//
+// Antes la condicion era NODE_ENV !== 'production', que confundia "produccion"
+// con "serverless": en Render, que pone NODE_ENV=production por defecto, el
+// proceso arrancaba sin escuchar y moria en el health check.
+const esServerless = Boolean(process.env.VERCEL);
+
+if (!esServerless) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Servidor CRM corriendo en el puerto ${PORT}`);
   });
