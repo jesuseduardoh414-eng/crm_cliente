@@ -1,0 +1,9 @@
+node_modules/
+.env
+
+# Los adjuntos y fotos que suben los usuarios son datos de ejecucion, no codigo.
+# La carpeta se conserva (.gitkeep) porque el servidor la sirve como estatica y
+# multer escribe ahi, pero su contenido no debe versionarse: en un repo publico
+# expondria documentos de clientes.
+uploads/*
+!uploads/.gitkeep

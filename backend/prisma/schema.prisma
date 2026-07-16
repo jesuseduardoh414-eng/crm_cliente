@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // App: pooler en modo transaccion (6543).
+  url       = env("DATABASE_URL")
+  // Migraciones: pooler en modo sesion (5432). Sin esto, prisma migrate falla
+  // contra pgbouncer en modo transaccion.
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id                       Int            @id @default(autoincrement())
+  nombre                   String
+  email                    String         @unique
+  password                 String
+  telefono                 String?
+  puesto                   String?
+  biografia                String?
+  fotoPerfilUrl            String?        @map("foto_perfil_url")
+  area                     Area
+  rol                      Rol            @default(MIEMBRO)
+  creadoEn                 DateTime       @default(now())
+  resetToken               String?
+  resetTokenExpires        DateTime?
+  verificado               Boolean        @default(false)
+  verificationToken        String?
+  verificationTokenExpires DateTime?
+  estado                   String?        @default("pendiente")
+  tokenInvitacion          String?        @unique @map("token_invitacion")
+  tokenExpiraEn            DateTime?      @map("token_expira_en")
+  passwordHash             String?        @map("password_hash")
+  googleCalendarEmail      String?        @map("google_calendar_email")
+  googleAccessToken        String?        @map("google_access_token")
+  googleRefreshToken       String?        @map("google_refresh_token")
+  googleTokenExpiresAt     DateTime?      @map("google_token_expires_at")
+  adjuntos                 Adjunto[]      @relation("AutorAdjunto")
+  comentarios              Comentario[]   @relation("AutorComentario")
+  actividades              LogActividad[] @relation("AutorActividad")
+  eventos                  Evento[]       @relation("UsuarioEvento")
+  eventosCreados           Evento[]       @relation("EventosCreados")
+  invitacionesEventos      EventoInvitado[]
+  configLaboral            ConfiguracionLaboral?
+  diasEspeciales           DiaEspecial[]
+  notificaciones           Notificacion[] @relation("DestinatarioNotificacion")
+  proyectosCreados         Proyecto[]     @relation("CreadorProyecto")
+  plantillasCreadas        PlantillaProyecto[] @relation("CreadorPlantillaProyecto")
+  tareasCreadas            Tarea[]        @relation("CreadorTarea")
+  tareasAsignadas          Tarea[]        @relation("AsignadoTarea")
+  tareasCompartidas        Tarea[]        @relation("AsignadosMultiplesTarea")
+  proyectosMiembro         Proyecto[]     @relation("ProyectoMiembro")
+  invitacionesEnviadas     Invitacion[]   @relation("CreadorInvitacion")
+
+  @@map("usuarios")
+}
+
+model Invitacion {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String
+  nombre    String
+  area      String
+  rol       String   @default("miembro")
+  token     String   @unique
+  estado    String   @default("pendiente")
+  creadoPor Int?     @map("creado_por")
+  creadoEn  DateTime @default(now()) @map("creado_en")
+  expiraEn  DateTime @map("expira_en")
+  creador   Usuario? @relation("CreadorInvitacion", fields: [creadoPor], references: [id])
+
+  @@map("invitaciones")
+}
+
+model Proyecto {
+  id          Int            @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  estado      String         @default("ACTIVO")
+  creadoEn    DateTime       @default(now())
+  creadorId   Int
+  area        String         @default("DESARROLLO")
+  fechaFin    DateTime?
+  fechaInicio DateTime       @default(now())
+  adjuntos    Adjunto[]
+  comentarios Comentario[]
+  actividades LogActividad[]
+  creador     Usuario        @relation("CreadorProyecto", fields: [creadorId], references: [id])
+  tareas      Tarea[]
+  notificaciones Notificacion[]
+  miembros    Usuario[]      @relation("ProyectoMiembro")
+  eventos     Evento[]
+  plantillasBase PlantillaProyecto[] @relation("ProyectoFuentePlantillas")
+
+  @@map("proyectos")
+}
+
+model PlantillaProyecto {
+  id              Int              @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  area            String           @default("DESARROLLO")
+  creadoEn        DateTime         @default(now())
+  creadorId       Int
+  proyectoBaseId  Int?
+  creador         Usuario          @relation("CreadorPlantillaProyecto", fields: [creadorId], references: [id])
+  proyectoBase    Proyecto?        @relation("ProyectoFuentePlantillas", fields: [proyectoBaseId], references: [id], onDelete: SetNull)
+  tareas          PlantillaTarea[]
+
+  @@map("plantillas_proyecto")
+}
+
+model PlantillaTarea {
+  id               Int               @id @default(autoincrement())
+  plantillaId      Int
+  clave            String
+  titulo           String
+  descripcion      String?
+  prioridad        String            @default("MEDIA")
+  orden            Int               @default(0)
+  offsetInicioDias Int               @default(0)
+  offsetVenceDias  Int?
+  dependeDeClave   String?
+  plantilla        PlantillaProyecto @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+
+  @@unique([plantillaId, clave])
+  @@map("plantillas_tarea")
+}
+
+model Tarea {
+  id          Int          @id @default(autoincrement())
+  titulo      String
+  descripcion String?
+  numeroActividad Int?
+  estado      String       @default("PENDIENTE")
+  prioridad   String       @default("MEDIA")
+  creadoEn    DateTime     @default(now())
+  completadoEn DateTime?
+  venceEn     DateTime?
+  proyectoId  Int
+  asignadoId  Int?
+  creadorId   Int?
+  dependeDeId Int?
+  fechaInicio DateTime     @default(now())
+  adjuntos    Adjunto[]
+  comentarios Comentario[]
+  actividades LogActividad[]
+  asignado    Usuario?     @relation("AsignadoTarea", fields: [asignadoId], references: [id])
+  asignados   Usuario[]    @relation("AsignadosMultiplesTarea")
+  creador     Usuario?     @relation("CreadorTarea", fields: [creadorId], references: [id])
+  dependeDe   Tarea?       @relation("Dependencia", fields: [dependeDeId], references: [id])
+  bloqueaA    Tarea[]      @relation("Dependencia")
+  proyecto    Proyecto     @relation(fields: [proyectoId], references: [id])
+  notificaciones Notificacion[]
+
+  @@index([asignadoId])
+  @@index([creadorId])
+  @@index([estado])
+  @@index([proyectoId, numeroActividad])
+  @@map("tareas")
+}
+
+model Notificacion {
+  id         Int      @id @default(autoincrement())
+  mensaje    String
+  tipo       String
+  leida      Boolean  @default(false)
+  creadaEn   DateTime @default(now())
+  usuarioId  Int
+  tareaId    Int?
+  proyectoId Int?
+  eventoId   String?  @db.Uuid
+  actorNombre String?
+  usuario    Usuario  @relation("DestinatarioNotificacion", fields: [usuarioId], references: [id], onDelete: Cascade)
+  tarea      Tarea?   @relation(fields: [tareaId], references: [id], onDelete: SetNull)
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  evento     Evento?  @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+
+  @@map("notificaciones")
+}
+
+model Comentario {
+  id         Int       @id @default(autoincrement())
+  contenido  String
+  creadoEn   DateTime  @default(now())
+  autorId    Int
+  tareaId    Int?
+  proyectoId Int?
+  autor      Usuario   @relation("AutorComentario", fields: [autorId], references: [id], onDelete: Cascade)
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tarea      Tarea?    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+
+  @@map("comentarios")
+}
+
+model LogActividad {
+  id          Int      @id @default(autoincrement())
+  accion      String
+  descripcion String
+  creadoEn    DateTime @default(now())
+  usuarioId   Int
+  proyectoId  Int
+  tareaId     Int?
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tarea       Tarea?    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuario     Usuario  @relation("AutorActividad", fields: [usuarioId], references: [id])
+
+  @@map("logs_actividad")
+}
+
+model Adjunto {
+  id         Int       @id @default(autoincrement())
+  nombre     String
+  url        String
+  tipo       String?
+  tamano     Int?
+  creadoEn   DateTime  @default(now())
+  usuarioId  Int
+  tareaId    Int?
+  proyectoId Int?
+  eventoId   String?   @db.Uuid
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tarea      Tarea?    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  evento     Evento?   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  usuario    Usuario   @relation("AutorAdjunto", fields: [usuarioId], references: [id])
+
+  @@map("adjuntos")
+}
+
+// Modelo de Agenda Personal y Compartida
+model Evento {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId      Int      // Creador/Propietario original (Phase 8 logic)
+  usuario        Usuario  @relation("UsuarioEvento", fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo         String
+  descripcion    String?
+  tipo           String   // 'evento', 'recordatorio', 'dia_completo'
+  modalidad      String   @default("presencial")
+  ubicacion      String?
+  urlReunion     String?  @map("url_reunion")
+  instruccionesAcceso String? @map("instrucciones_acceso")
+  fechaInicio    DateTime @map("fecha_inicio")
+  fechaFin       DateTime? @map("fecha_fin")
+  todoElDia      Boolean  @default(false) @map("todo_el_dia")
+  color          String   @default("#4a90d9")
+  alertaMinutos  Int?     @map("alerta_minutos")
+  creadoEn       DateTime @default(now()) @map("creado_en")
+
+  // Phase 8.1 - Compartidos
+  esCompartido   Boolean  @default(false) @map("es_compartido")
+  esGlobal       Boolean  @default(false) @map("es_global")
+  proyectoId     Int?     @map("proyecto_id")
+  proyecto       Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  creadoPorId    Int?     @map("creado_por_id")
+  creador        Usuario?  @relation("EventosCreados", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  invitados         EventoInvitado[]
+  adjuntos          Adjunto[]
+  notificaciones    Notificacion[]
+
+  // Recurrencia
+  esRecurrente      Boolean   @default(false) @map("es_recurrente")
+  patronRecurrencia String?   @map("patron_recurrencia") // JSON: { tipo:'semanal', dias:[0,6], horaInicio:'09:00', horaFin:'18:00' }
+  fechaFinRecurr    DateTime? @map("fecha_fin_recurrencia")
+  googleCalendarEventId String? @map("google_calendar_event_id")
+
+  @@map("eventos")
+}
+
+model EventoInvitado {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventoId  String   @map("evento_id") @db.Uuid
+  usuarioId Int      @map("usuario_id")
+  estado    String   @default("pendiente") // 'pendiente', 'aceptado', 'rechazado'
+  visto     Boolean  @default(false)
+  evento    Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, usuarioId])
+  @@map("evento_invitados")
+}
+
+model ConfiguracionLaboral {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId        Int      @unique @map("usuario_id")
+  diasLaborales    Int[]    @default([1, 2, 3, 4, 5]) @map("dias_laborales")
+  horaEntrada      String   @default("09:00") @map("hora_entrada")
+  horaSalida       String   @default("18:00") @map("hora_salida")
+  horaComidaInicio String   @default("14:00") @map("hora_comida_inicio")
+  horaComidaFin    String   @default("15:00") @map("hora_comida_fin")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("calendario_laboral")
+}
+
+model DiaEspecial {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId   Int      @map("usuario_id")
+  fecha       DateTime @db.Date
+  tipo        String   // 'festivo', 'vacacion', 'permiso', 'homeoffice'
+  descripcion String?
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, fecha])
+  @@map("dias_especiales")
+}
+
+enum Area {
+  DESARROLLO
+  ADMINISTRACION
+  COMUNICACION
+  MARKETING
+}
+
+enum Rol {
+  ADMIN
+  MIEMBRO
+}

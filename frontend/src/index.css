@@ -1,0 +1,359 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Paleta de marca ──────────────────────────────────────────────────────
+   Azul industrial + amarillo de seguridad.
+
+   Los escalones se guardan como TRIPLETAS RGB sin envolver ("37 99 235"), no
+   como hex. Es obligatorio: tailwind.config.js los consume via
+   rgb(var(--x) / <alpha-value>), y ese es el unico formato con el que los
+   modificadores de opacidad (bg-brand-50/40, shadow-brand-500/20, ring-...)
+   siguen funcionando. Un hex aqui los rompe en silencio.
+
+   Para usar un color directamente en CSS o en style={{}}, NO uses estas
+   variables: usa los alias resueltos de mas abajo (--color-primary y cia),
+   que ya vienen envueltos en rgb().                                        */
+:root {
+  /* Azul de marca — mas profundo y saturado que el azul por defecto */
+  --brand-50:  239 245 255;
+  --brand-100: 219 231 254;
+  --brand-200: 190 210 253;
+  --brand-300: 145 176 251;
+  --brand-400:  92 133 247;
+  --brand-500:  53  99 240;
+  --brand-600:  31  71 221;  /* primario */
+  --brand-700:  26  55 180;
+  --brand-800:  27  49 144;
+  --brand-900:  28  45 114;
+
+  /* Amarillo de marca — amarillo de seguridad/maquinaria */
+  --accent-50:  254 252 232;
+  --accent-100: 254 249 195;
+  --accent-200: 254 240 138;
+  --accent-300: 253 224  71;
+  --accent-400: 250 204  21;  /* acento */
+  --accent-500: 234 179   8;
+  --accent-600: 202 138   4;
+  --accent-700: 161  98   7;
+  --accent-800: 133  77  14;
+  --accent-900: 113  63  18;
+
+  /* ── 60% - Dominante (Blancos y Fondos) ────────────────── */
+  --color-bg-base:      #f8fafc;
+  --color-surface:      #ffffff;
+  --color-surface-2:    #ffffff;
+  --color-surface-3:    #f1f5f9;
+
+  /* ── 30% - Secundario (Texto, Bordes, Sidebar) ─────────── */
+  --color-sidebar:      #0f172a;
+  --color-sidebar-item: #1e293b;
+  --color-text:         #0f172a;
+  --color-text-dim:     #475569;
+  --color-text-muted:   #64748b;
+  --color-border:       #e2e8f0;
+  --color-border-light: #f1f5f9;
+
+  /* ── 10% - Acento (Brillante y Vivo) ───────────────────── */
+  /* Alias resueltos: seguros para var() directo y style={{}} */
+  --color-primary:       rgb(var(--brand-600));
+  --color-primary-light: rgb(var(--brand-500));
+  --color-primary-dark:  rgb(var(--brand-700));
+  /* Velos del primario. Ya se usaban en el codigo pero nunca se definieron,
+     asi que resolvian a nada. */
+  --color-primary-10:    rgb(var(--brand-600) / 0.1);
+  --color-primary-20:    rgb(var(--brand-600) / 0.2);
+  --color-primary-40:    rgb(var(--brand-600) / 0.4);
+  --color-accent:        rgb(var(--accent-400));
+  --color-accent-dark:   rgb(var(--accent-600));
+  --color-accent-success: #10b981;
+  /* Warning en naranja, no ambar: el amarillo ahora es color de marca y
+     ambos juntos eran indistinguibles. */
+  --color-accent-warning: #ea580c;
+  --color-accent-error:   #ef4444;
+  --color-accent-purple:  #8b5cf6;
+
+  /* ── Elevación y Sombras ───────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+  --shadow-xl: 0 24px 60px rgba(0,0,0,0.12);
+  
+  --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Semántica ─────────────────────────────────────────── */
+  --color-error:        var(--color-accent-error);
+  --color-success:      var(--color-accent-success);
+  --color-warning:      var(--color-accent-warning);
+  --color-info:         var(--color-primary);
+}
+
+:root[data-theme="dark"] {
+  /* En oscuro la escala se invierte: los tonos bajos (50-200) pasan a ser
+     fondos tenues y los altos (500-700) los que llevan texto e iconos. Asi
+     bg-brand-50 y text-brand-600 siguen legibles sin tocar los componentes. */
+  --brand-50:   23  35  66;
+  --brand-100:  28  45  92;
+  --brand-200:  33  57 124;
+  --brand-300:  46  81 170;
+  --brand-400:  74 118 214;
+  --brand-500: 108 152 243;
+  --brand-600: 141 178 250;  /* primario en oscuro: claro sobre fondo oscuro */
+  --brand-700: 175 203 252;
+  --brand-800: 205 223 253;
+  --brand-900: 231 240 254;
+
+  --accent-50:   48  38   8;
+  --accent-100:  71  54   8;
+  --accent-200: 105  79   9;
+  --accent-300: 148 111  11;
+  --accent-400: 250 204  21;  /* el amarillo se mantiene vivo en oscuro */
+  --accent-500: 253 224  71;
+  --accent-600: 254 240 138;
+  --accent-700: 254 249 195;
+  --accent-800: 254 252 232;
+  --accent-900: 255 253 244;
+
+  --color-bg-base:      #07111f;
+  --color-surface:      #0b1628;
+  --color-surface-2:    #0f1c31;
+  --color-surface-3:    #16243d;
+
+  --color-sidebar:      #030712;
+  --color-sidebar-item: #111827;
+  --color-text:         #e5eefb;
+  --color-text-dim:     #b5c4dc;
+  --color-text-muted:   #8ea2c4;
+  --color-border:       #22314d;
+  --color-border-light: #18253b;
+
+  --color-primary:       rgb(var(--brand-600));
+  --color-primary-light: rgb(var(--brand-700));
+  --color-primary-dark:  rgb(var(--brand-500));
+  --color-primary-10:    rgb(var(--brand-600) / 0.1);
+  --color-primary-20:    rgb(var(--brand-600) / 0.2);
+  --color-primary-40:    rgb(var(--brand-600) / 0.4);
+  --color-accent:        rgb(var(--accent-400));
+  --color-accent-dark:   rgb(var(--accent-500));
+  --color-accent-success: #34d399;
+  --color-accent-warning: #fb923c;
+  --color-accent-error:   #f87171;
+  --color-accent-purple:  #a78bfa;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.25);
+  --shadow-md: 0 12px 24px rgb(0 0 0 / 0.22);
+  --shadow-lg: 0 20px 40px rgb(0 0 0 / 0.28);
+  --shadow-xl: 0 30px 80px rgba(0,0,0,0.38);
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg-base);
+  color: var(--color-text);
+  min-height: 100vh;
+  font-size: 0.875rem; /* Reducido de 1rem a 0.875rem (~14px) */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 0.8rem; /* Aún más pequeño en móviles si es necesario */
+  }
+}
+
+/* Scrollbars Modernos */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-dim); }
+
+select,
+input,
+textarea,
+button {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ── Utilidades compartidas ──────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.85rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: var(--transition-base);
+  box-shadow: 0 4px 12px rgb(var(--brand-600) / 0.2);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgb(var(--brand-600) / 0.3);
+  color: #ffffff; /* Asegurar que la letra siga siendo blanca */
+}
+
+.btn-primary:active { 
+  transform: translateY(0);
+}
+
+.btn-primary:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+  transform: none; 
+  box-shadow: none; 
+}
+
+.btn-icon-sm {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.btn-icon-sm:hover {
+  background: var(--color-surface-3);
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+  transform: scale(1.05);
+}
+
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-left: 0.25rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.8rem 1.1rem;
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.form-input:focus {
+  border-color: var(--color-primary);
+  background: var(--color-surface-3);
+  box-shadow: 0 0 0 4px rgb(var(--brand-600) / 0.15);
+}
+.form-input::placeholder { color: var(--color-text-dim); }
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+}
+
+.alert-error {
+  padding: 0.85rem 1.25rem;
+  background: rgba(251, 113, 133, 0.1);
+  border: 1px solid rgba(251, 113, 133, 0.2);
+  border-radius: 0.85rem;
+  color: var(--color-error);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* ── Dark mode: override hardcoded Tailwind utility classes ─────────────────
+   Many components use Tailwind light-mode classes directly. These rules remap
+   them to the CSS-variable palette when data-theme="dark" is set on <html>. */
+[data-theme="dark"] .bg-white { background-color: var(--color-surface) !important; }
+[data-theme="dark"] .bg-white\/50 { background-color: color-mix(in srgb, var(--color-surface) 50%, transparent) !important; }
+[data-theme="dark"] .bg-white\/80 { background-color: color-mix(in srgb, var(--color-surface) 80%, transparent) !important; }
+[data-theme="dark"] .bg-white\/10 { background-color: color-mix(in srgb, var(--color-surface) 10%, transparent) !important; }
+[data-theme="dark"] .bg-slate-50 { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .bg-slate-50\/50 { background-color: color-mix(in srgb, var(--color-surface-3) 50%, transparent) !important; }
+[data-theme="dark"] .bg-slate-50\/60 { background-color: color-mix(in srgb, var(--color-surface-3) 60%, transparent) !important; }
+[data-theme="dark"] .bg-slate-50\/70 { background-color: color-mix(in srgb, var(--color-surface-3) 70%, transparent) !important; }
+[data-theme="dark"] .bg-slate-100 { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .bg-slate-200 { background-color: var(--color-border) !important; }
+[data-theme="dark"] .bg-slate-800 { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .bg-slate-900 { background-color: var(--color-sidebar) !important; }
+[data-theme="dark"] .bg-gray-50 { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .bg-gray-100 { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .bg-gray-200 { background-color: var(--color-border) !important; }
+[data-theme="dark"] .bg-gray-900 { background-color: var(--color-sidebar) !important; }
+
+[data-theme="dark"] .text-black { color: var(--color-text) !important; }
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800 { color: var(--color-text) !important; }
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600 { color: var(--color-text-dim) !important; }
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-slate-300,
+[data-theme="dark"] .text-slate-200 { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800 { color: var(--color-text) !important; }
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-600 { color: var(--color-text-dim) !important; }
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-300 { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .text-white { color: #f8fbff !important; }
+
+[data-theme="dark"] .border-slate-50,
+[data-theme="dark"] .border-slate-100 { border-color: var(--color-border-light) !important; }
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300 { border-color: var(--color-border) !important; }
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 { border-color: var(--color-border) !important; }
+[data-theme="dark"] .border-white { border-color: var(--color-border-light) !important; }
+
+[data-theme="dark"] .divide-slate-200 > * + * { border-color: var(--color-border) !important; }
+
+[data-theme="dark"] .shadow-slate-200\/50,
+[data-theme="dark"] .shadow-slate-100 { box-shadow: var(--shadow-md) !important; }
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow-lg,
+[data-theme="dark"] .shadow-xl { box-shadow: var(--shadow-md) !important; }
+
+[data-theme="dark"] .hover\:bg-white:hover { background-color: var(--color-surface) !important; }
+[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .hover\:bg-slate-100:hover { background-color: var(--color-surface-3) !important; }
+[data-theme="dark"] .hover\:text-slate-600:hover,
+[data-theme="dark"] .hover\:text-slate-700:hover { color: var(--color-text) !important; }
+[data-theme="dark"] .hover\:border-slate-300:hover,
+[data-theme="dark"] .hover\:border-slate-400:hover { border-color: var(--color-primary-light) !important; }
