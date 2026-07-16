@@ -17,6 +17,8 @@ const DIR_LOCAL = path.join(__dirname, '../../uploads');
 
 const hayBlob = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
 
+const esServerless = () => Boolean(process.env.VERCEL);
+
 const esUrlAbsoluta = (valor) => /^https?:\/\//i.test(valor || '');
 
 // Aplana el nombre a algo seguro para el sistema de archivos: sin separadores
@@ -42,6 +44,18 @@ const guardarArchivo = async (file, carpeta = '') => {
       contentType: file.mimetype,
     });
     return blob.url;
+  }
+
+  // En serverless no hay respaldo posible: el disco es de solo lectura y el
+  // mkdirSync de abajo reventaria con un EROFS que no dice nada de la causa
+  // real. Mejor fallar aqui diciendo exactamente que falta.
+  if (esServerless()) {
+    const e = new Error(
+      'Falta BLOB_READ_WRITE_TOKEN: en produccion los archivos se guardan en Vercel Blob '
+      + 'y sin ese token no hay donde escribirlos.',
+    );
+    e.statusCode = 500;
+    throw e;
   }
 
   // Fallback local: se replica la carpeta dentro de uploads/ para no acabar con
