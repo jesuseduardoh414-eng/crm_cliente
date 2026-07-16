@@ -11,8 +11,11 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderKanban,
+  Forklift,
+  HardHat,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   Moon,
   Search,
@@ -28,6 +31,9 @@ const IconGestion = () => <ShieldCheck size={20} strokeWidth={2.5} />;
 const IconLogout = () => <LogOut size={18} strokeWidth={2.5} />;
 const IconMenu = () => <Menu size={24} strokeWidth={2.5} />;
 const IconAgenda = () => <Calendar size={20} strokeWidth={2.5} />;
+const IconMaquinaria = () => <Forklift size={20} strokeWidth={2.5} />;
+const IconOperadores = () => <HardHat size={20} strokeWidth={2.5} />;
+const IconNoticias = () => <Megaphone size={20} strokeWidth={2.5} />;
 
 const getInitials = (nombre = '') => (
   nombre
@@ -40,6 +46,9 @@ const getInitials = (nombre = '') => (
 
 const navLinks = [
   { to: '/dashboard', labelKey: 'home', Icon: IconDashboard },
+  { to: '/noticias', labelKey: 'newsPanel', Icon: IconNoticias },
+  { to: '/maquinaria', labelKey: 'machinery', Icon: IconMaquinaria },
+  { to: '/operadores', labelKey: 'operators', Icon: IconOperadores },
   { to: '/proyectos', labelKey: 'projects', Icon: IconProyectos },
   { to: '/agenda', labelKey: 'agenda', Icon: IconAgenda },
   { to: '/equipo', labelKey: 'community', Icon: IconEquipo },
@@ -248,7 +257,7 @@ const Layout = ({ children }) => {
             <button
               type="button"
               onClick={() => navigate('/perfil')}
-              className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-black text-white border-2 border-white/10 transition-all hover:scale-105"
+              className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center font-black text-white border-2 border-white/10 transition-all hover:scale-105"
               title={collapsed ? usuario?.nombre : undefined}
             >
               {usuario?.fotoPerfilUrl ? (

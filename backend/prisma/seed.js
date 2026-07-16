@@ -33,7 +33,7 @@ const USUARIOS = [
   {
     nombre: 'Usuario Panel',
     email: 'usuario@local.test',
-    area: 'DESARROLLO',
+    area: 'VENTAS',
     rol: 'MIEMBRO',
     puesto: 'Miembro del equipo',
     password: process.env.SEED_MIEMBRO_PASSWORD || 'Panel.2026.local',

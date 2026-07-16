@@ -42,7 +42,7 @@ const parseJsonArray = (value) => {
 
 const normalizarIds = (ids) => [...new Set(ids.map(id => Number(id)).filter(id => !Number.isNaN(id)))];
 
-const areasDeProyecto = (area) => (area || 'DESARROLLO')
+const areasDeProyecto = (area) => (area || 'VENTAS')
   .split(',')
   .map(a => a.trim())
   .filter(Boolean);
@@ -295,7 +295,7 @@ const guardarComoPlantilla = async (req, res) => {
       data: {
         nombre: nombre.trim(),
         descripcion: descripcion?.trim() || proyecto.descripcion || null,
-        area: proyecto.area || 'DESARROLLO',
+        area: proyecto.area || 'VENTAS',
         creadorId: req.usuario.id,
         proyectoBaseId: proyecto.id,
         tareas: {
@@ -395,7 +395,7 @@ const crear = async (req, res) => {
     const ids = normalizarIds(parseJsonArray(miembrosIds));
     const idsProyecto = ids.includes(req.usuario.id) ? ids : [...ids, req.usuario.id];
 
-    const areaProyecto = area || 'DESARROLLO';
+    const areaProyecto = area || 'VENTAS';
     if (esAdmin(req.usuario) && !areasDeProyecto(areaProyecto).every((areaItem) => puedeGestionarArea(req.usuario, areaItem))) {
       return res.status(403).json({ error: 'Solo puedes crear proyectos en tu propia área' });
     }

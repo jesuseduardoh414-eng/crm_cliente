@@ -52,6 +52,12 @@ model Usuario {
   tareasCompartidas        Tarea[]        @relation("AsignadosMultiplesTarea")
   proyectosMiembro         Proyecto[]     @relation("ProyectoMiembro")
   invitacionesEnviadas     Invitacion[]   @relation("CreadorInvitacion")
+  perfilOperador           PerfilOperador?
+  maquinas                 Maquina[]      @relation("MaquinasPropias")
+  publicaciones            Publicacion[]  @relation("PublicacionesPropias")
+  // Obras donde este usuario opera maquinaria.
+  asignacionesComoOperador AsignacionMaquina[] @relation("OperadorAsignado")
+  asignacionesCreadas      AsignacionMaquina[] @relation("AsignacionesCreadas")
 
   @@map("usuarios")
 }
@@ -79,7 +85,7 @@ model Proyecto {
   estado      String         @default("ACTIVO")
   creadoEn    DateTime       @default(now())
   creadorId   Int
-  area        String         @default("DESARROLLO")
+  area        String         @default("VENTAS")
   fechaFin    DateTime?
   fechaInicio DateTime       @default(now())
   adjuntos    Adjunto[]
@@ -91,6 +97,8 @@ model Proyecto {
   miembros    Usuario[]      @relation("ProyectoMiembro")
   eventos     Evento[]
   plantillasBase PlantillaProyecto[] @relation("ProyectoFuentePlantillas")
+  // Maquinaria de la obra, cada una con su operador.
+  maquinaria  AsignacionMaquina[]
 
   @@map("proyectos")
 }
@@ -99,7 +107,7 @@ model PlantillaProyecto {
   id              Int              @id @default(autoincrement())
   nombre          String
   descripcion     String?
-  area            String           @default("DESARROLLO")
+  area            String           @default("VENTAS")
   creadoEn        DateTime         @default(now())
   creadorId       Int
   proyectoBaseId  Int?
@@ -141,6 +149,13 @@ model Tarea {
   asignadoId  Int?
   creadorId   Int?
   dependeDeId Int?
+  // Maquina que usa esta tarea. Es lo que enlaza el catalogo con el trabajo
+  // real: desde la maquina se ve en que tareas y proyectos esta metida, sin
+  // necesidad de una relacion aparte proyecto-maquina que podria contradecir
+  // a las tareas.
+  // SetNull y no Cascade: si se borra la maquina, la tarea sigue existiendo.
+  maquinaId   Int?         @map("maquina_id")
+  maquina     Maquina?     @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
   fechaInicio DateTime     @default(now())
   adjuntos    Adjunto[]
   comentarios Comentario[]
@@ -156,6 +171,7 @@ model Tarea {
   @@index([asignadoId])
   @@index([creadorId])
   @@index([estado])
+  @@index([maquinaId])
   @@index([proyectoId, numeroActividad])
   @@map("tareas")
 }
@@ -219,12 +235,132 @@ model Adjunto {
   tareaId    Int?
   proyectoId Int?
   eventoId   String?   @db.Uuid
+  // Las imagenes de maquinas y publicaciones reutilizan este modelo, que ya
+  // sube a Vercel Blob. No hacia falta una tabla de imagenes aparte.
+  maquinaId     Int?   @map("maquina_id")
+  publicacionId Int?   @map("publicacion_id")
+  // Ordena la galeria de una maquina; la primera hace de portada.
+  orden      Int       @default(0)
   proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   tarea      Tarea?    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
   evento     Evento?   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  maquina    Maquina?     @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  publicacion Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
   usuario    Usuario   @relation("AutorAdjunto", fields: [usuarioId], references: [id])
 
+  @@index([maquinaId])
+  @@index([publicacionId])
   @@map("adjuntos")
+}
+
+// Datos propios de un Usuario con rol OPERADOR.
+// Es una tabla aparte y no campos sueltos en Usuario porque solo aplican a los
+// operadores: meterlos en Usuario dejaria media docena de columnas nulas en
+// todas las demas cuentas.
+model PerfilOperador {
+  id               Int      @id @default(autoincrement())
+  usuarioId        Int      @unique @map("usuario_id")
+  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  especialidad     String
+  descripcion      String?
+  // Lo marca el propio operador; es lo que filtra el listado de disponibles.
+  disponible       Boolean  @default(false)
+  zona             String?
+  telefonoContacto String?  @map("telefono_contacto")
+  tarifaHora       Decimal? @map("tarifa_hora") @db.Decimal(10, 2)
+  experienciaAnios Int?     @map("experiencia_anios")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+
+  @@index([disponible])
+  @@map("perfiles_operador")
+}
+
+// Una maquina que su dueño ofrece en renta.
+model Maquina {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  tipo          String
+  marca         String?
+  modelo        String?
+  anio          Int?
+  descripcion   String?
+  precioDia     Decimal? @map("precio_dia") @db.Decimal(10, 2)
+  disponible    Boolean  @default(true)
+  ubicacion     String?
+  // El dueño: es quien puede editarla o borrarla. En un marketplace no basta
+  // con el rol, el permiso depende de quien la publico.
+  propietarioId Int      @map("propietario_id")
+  propietario   Usuario  @relation("MaquinasPropias", fields: [propietarioId], references: [id], onDelete: Cascade)
+  // Al ser panel interno, una maquina que se da de alta la ve el equipo al
+  // momento; BORRADOR solo si se quiere preparar antes, y OCULTA para retirarla
+  // sin borrar su historial.
+  estado        EstadoPublicacion @default(PUBLICADA)
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+  adjuntos      Adjunto[]
+  publicaciones Publicacion[]
+  // Tareas que la usan: el detalle fino de que se hace con ella.
+  tareas        Tarea[]
+  // Obras a las que esta asignada, cada una con su operador.
+  asignaciones  AsignacionMaquina[]
+
+  @@index([propietarioId])
+  @@index([disponible, estado])
+  @@index([tipo])
+  @@map("maquinas")
+}
+
+// Maquinaria asignada a una obra, con su operador.
+//
+// Es una entidad y no una relacion suelta proyecto<->maquina porque el operador
+// depende de las dos cosas: la misma retro puede llevar a Juan en una obra y a
+// Luis en otra. Un campo "operador" en Maquina no podria representarlo.
+model AsignacionMaquina {
+  id          Int       @id @default(autoincrement())
+  proyectoId  Int       @map("proyecto_id")
+  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  maquinaId   Int       @map("maquina_id")
+  maquina     Maquina   @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  // Opcional: se puede asignar la maquina a la obra antes de saber quien la
+  // operara. SetNull para que dar de baja al operador no borre la asignacion.
+  operadorId  Int?      @map("operador_id")
+  operador    Usuario?  @relation("OperadorAsignado", fields: [operadorId], references: [id], onDelete: SetNull)
+  fechaInicio DateTime? @map("fecha_inicio")
+  fechaFin    DateTime? @map("fecha_fin")
+  notas       String?
+  creadoEn    DateTime  @default(now()) @map("creado_en")
+  creadoPorId Int?      @map("creado_por_id")
+  creadoPor   Usuario?  @relation("AsignacionesCreadas", fields: [creadoPorId], references: [id], onDelete: SetNull)
+
+  // Una maquina no se asigna dos veces a la misma obra: si cambia el operador,
+  // se edita la asignacion, no se crea otra.
+  @@unique([proyectoId, maquinaId])
+  @@index([maquinaId])
+  @@index([operadorId])
+  @@map("asignaciones_maquina")
+}
+
+// Entrada del panel de noticias: alguien anuncia una maquina, se ofrece como
+// operador o publica un aviso.
+model Publicacion {
+  id          Int             @id @default(autoincrement())
+  titulo      String
+  cuerpo      String?
+  tipo        TipoPublicacion
+  estado      EstadoPublicacion @default(PUBLICADA)
+  visibilidad Visibilidad       @default(INTERNA)
+  autorId     Int             @map("autor_id")
+  autor       Usuario         @relation("PublicacionesPropias", fields: [autorId], references: [id], onDelete: Cascade)
+  maquinaId   Int?            @map("maquina_id")
+  maquina     Maquina?        @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  creadoEn    DateTime        @default(now()) @map("creado_en")
+  actualizadoEn DateTime      @updatedAt @map("actualizado_en")
+  adjuntos    Adjunto[]
+
+  @@index([estado, visibilidad, creadoEn])
+  @@index([autorId])
+  @@map("publicaciones")
 }
 
 // Modelo de Agenda Personal y Compartida
@@ -307,13 +443,38 @@ model DiaEspecial {
 }
 
 enum Area {
-  DESARROLLO
+  VENTAS
+  ALMACEN
+  COMPRAS
   ADMINISTRACION
-  COMUNICACION
-  MARKETING
+  RENTA
+  TALLER
 }
 
 enum Rol {
   ADMIN
   MIEMBRO
+  OPERADOR
+}
+
+// ── Dominio: maquinaria en renta y operadores ──────────────────────────────
+
+enum EstadoPublicacion {
+  BORRADOR   // solo lo ve su autor
+  PUBLICADA
+  OCULTA     // retirada por el autor o por moderacion
+}
+
+// Hoy todo es panel interno y no hay vista publica. El campo existe para poder
+// abrir contenido mas adelante sin una migracion con backfill, pero el default
+// es INTERNA a proposito: nada se publica fuera por descuido.
+enum Visibilidad {
+  PUBLICA    // reservado: no hay vista sin login todavia
+  INTERNA    // solo usuarios con cuenta
+}
+
+enum TipoPublicacion {
+  MAQUINA_RENTA
+  OPERADOR_DISPONIBLE
+  AVISO
 }

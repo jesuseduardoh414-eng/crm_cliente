@@ -46,6 +46,9 @@ const EquipoPage = lazyRetry(() => import('./pages/EquipoPage'), 'equipo');
 const UsuariosPage = lazyRetry(() => import('./pages/UsuariosPage'), 'usuarios');
 const AgendaPage = lazyRetry(() => import('./pages/AgendaPage'), 'agenda');
 const PerfilPage = lazyRetry(() => import('./pages/PerfilPage'), 'perfil');
+const MaquinariaPage = lazyRetry(() => import('./pages/MaquinariaPage'), 'maquinaria');
+const OperadoresPage = lazyRetry(() => import('./pages/OperadoresPage'), 'operadores');
+const PanelNoticiasPage = lazyRetry(() => import('./pages/PanelNoticiasPage'), 'noticias');
 
 // Redirige al dashboard si ya hay sesion activa (evita volver al login)
 const RutaPublica = ({ children }) => {
@@ -94,6 +97,10 @@ const AppRoutes = () => (
     <Route path="/usuarios" element={<RutaConLayout><UsuariosPage /></RutaConLayout>} />
     <Route path="/agenda" element={<RutaConLayout><AgendaPage /></RutaConLayout>} />
     <Route path="/perfil" element={<RutaConLayout><PerfilPage /></RutaConLayout>} />
+
+    <Route path="/maquinaria" element={<RutaConLayout><MaquinariaPage /></RutaConLayout>} />
+    <Route path="/operadores" element={<RutaConLayout><OperadoresPage /></RutaConLayout>} />
+    <Route path="/noticias" element={<RutaConLayout><PanelNoticiasPage /></RutaConLayout>} />
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>

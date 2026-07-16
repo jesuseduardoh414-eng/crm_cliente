@@ -40,10 +40,12 @@ const getInitials = (nombre = '') => (
 );
 
 const AREAS_KEY = {
-  DESARROLLO: 'areaDesarrollo',
+  VENTAS: 'areaVentas',
+  ALMACEN: 'areaAlmacen',
+  COMPRAS: 'areaCompras',
   ADMINISTRACION: 'areaAdministracion',
-  COMUNICACION: 'areaComunicacion',
-  MARKETING: 'areaMarketing',
+  RENTA: 'areaRenta',
+  TALLER: 'areaTaller',
 };
 
 const PerfilPage = () => {

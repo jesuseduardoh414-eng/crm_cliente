@@ -8,10 +8,13 @@ import { agendaService, proyectosService, usuariosService } from '../services/ap
 import { PageSkeleton } from '../components/Skeleton';
 import TaskAttachments from '../components/TaskAttachments';
 import { sortProyectos } from '../utils/sorters';
-import { 
-  Code2, 
-  BarChart3, 
-  Mail, 
+import {
+  ShoppingCart,
+  Warehouse,
+  Truck,
+  Forklift,
+  Wrench,
+  BarChart3,
   Folder,
   Trash2, 
   Plus,
@@ -21,16 +24,17 @@ import {
   Pencil,
   Upload,
   FileText,
-  Calendar,
-  Megaphone
+  Calendar
 } from 'lucide-react';
 
 // ── Configuraciones Visuales ────────────────────────────────────────────────
 const AREA_CONF = {
-  DESARROLLO:     { labelKey: 'areaDesarrollo',    color: 'var(--color-primary)', bg: 'rgb(var(--brand-600) / 0.08)', icon: <Code2 size={14} /> },
+  VENTAS:         { labelKey: 'areaVentas',         color: 'var(--color-primary)', bg: 'rgb(var(--brand-600) / 0.08)', icon: <ShoppingCart size={14} /> },
+  ALMACEN:        { labelKey: 'areaAlmacen',        color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   icon: <Warehouse size={14} /> },
+  COMPRAS:        { labelKey: 'areaCompras',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)',  icon: <Truck size={14} /> },
   ADMINISTRACION: { labelKey: 'areaAdministracion', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  icon: <BarChart3 size={14} /> },
-  COMUNICACION:   { labelKey: 'areaComunicacion',   color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', icon: <Mail size={14} /> },
-  MARKETING:      { labelKey: 'areaMarketing',      color: '#db2777', bg: 'rgba(219,39,119,0.08)', icon: <Megaphone size={14} /> },
+  RENTA:          { labelKey: 'areaRenta',          color: '#16a34a', bg: 'rgba(22,163,74,0.08)',   icon: <Forklift size={14} /> },
+  TALLER:         { labelKey: 'areaTaller',         color: '#db2777', bg: 'rgba(219,39,119,0.08)',  icon: <Wrench size={14} /> },
 };
 
 const ESTADOS = [
@@ -51,7 +55,7 @@ const ESTADO_ALIASES = {
 const normalizarEstadoProyecto = (estado) => ESTADO_ALIASES[String(estado || '').toUpperCase()] || String(estado || 'ACTIVO').toUpperCase();
 
 const getAreasProyecto = (area) => {
-  if (!area) return ['DESARROLLO'];
+  if (!area) return ['VENTAS'];
   return area.split(',').map(a => a.trim()).filter(Boolean);
 };
 
@@ -310,7 +314,7 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
   const { t, locale } = usePreferences();
   const { usuario: usuarioActual } = useAuth();
   const esAdminArea = usuarioActual?.rol === 'ADMIN' && usuarioActual?.area !== 'ADMINISTRACION';
-  const areasIniciales = proyecto?.area ? getAreasProyecto(proyecto.area) : [usuarioActual?.area || 'DESARROLLO'];
+  const areasIniciales = proyecto?.area ? getAreasProyecto(proyecto.area) : [usuarioActual?.area || 'VENTAS'];
   const [form, setForm] = useState({
     nombre: proyecto?.nombre || '',
     descripcion: proyecto?.descripcion || '',

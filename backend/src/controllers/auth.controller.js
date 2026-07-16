@@ -5,7 +5,7 @@ const crypto  = require('crypto');
 const { validarPassword } = require('../utils/security.utils');
 const { sendResetEmail, sendVerificationEmail } = require('../services/email.service');
 const { enviarInvitacion } = require('../services/correo');
-const { buildScopeProyectoParaAdmin, puedeGestionarArea, esAdminDeArea } = require('../utils/permissions.utils');
+const { buildScopeProyectoParaAdmin, puedeGestionarArea, esAdminDeArea, esRolValido, normalizarRol, ROLES } = require('../utils/permissions.utils');
 
 const usuarioAuthSelect = {
   id: true,
@@ -246,6 +246,12 @@ const invitar = async (req, res) => {
     return res.status(400).json({ error: 'Todos los campos son requeridos' });
   }
 
+  // Sin esto se podia invitar con cualquier rol inventado y el usuario acababa
+  // siendo MIEMBRO sin que nadie se enterara.
+  if (!esRolValido(rol)) {
+    return res.status(400).json({ error: `Rol inválido. Debe ser uno de: ${ROLES.join(', ')}` });
+  }
+
   try {
     const usuarioExistente = await prisma.usuario.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (usuarioExistente) {
@@ -364,17 +370,33 @@ const aceptarInvitacion = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Crear el usuario
+    const rolFinal = normalizarRol(invitacion.rol);
+
     const nuevoUsuario = await prisma.usuario.create({
       data: {
         nombre: invitacion.nombre,
         email: invitacion.email,
         password: passwordHash,
         area: invitacion.area,
-        rol: invitacion.rol.toUpperCase() === 'ADMIN' ? 'ADMIN' : 'MIEMBRO',
+        rol: rolFinal,
         estado: 'activo',
         verificado: true
       }
     });
+
+    // Un OPERADOR sin PerfilOperador entra con el rol pero no sale en el
+    // listado de operadores: quedaria invisible para quien busca a quien
+    // asignar. Se le crea el perfil vacio y no disponible; el ya lo completa
+    // y se marca libre cuando toque.
+    if (rolFinal === 'OPERADOR') {
+      await prisma.perfilOperador.create({
+        data: {
+          usuarioId: nuevoUsuario.id,
+          especialidad: 'Por definir',
+          disponible: false,
+        },
+      });
+    }
 
     // Marcar invitación como aceptada
     await prisma.invitacion.update({

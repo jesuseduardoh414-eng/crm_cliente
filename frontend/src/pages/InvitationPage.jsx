@@ -196,7 +196,7 @@ const InvitationPage = () => {
               className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${
                 submitting || strength < 2
                   ? 'bg-slate-300 cursor-not-allowed shadow-none'
-                  : 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700'
+                  : 'bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-700 hover:to-brand-900'
               }`}
             >
               {submitting ? (

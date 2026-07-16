@@ -13,10 +13,12 @@ import {
 } from 'lucide-react';
 
 const AREA_COLORS = {
-  DESARROLLO: { solid: 'var(--color-primary)', soft: 'rgb(var(--brand-600) / 0.14)' },
+  VENTAS: { solid: 'var(--color-primary)', soft: 'rgb(var(--brand-600) / 0.14)' },
+  ALMACEN: { solid: '#0891b2', soft: 'rgba(8,145,178,0.14)' },
+  COMPRAS: { solid: '#8b5cf6', soft: 'rgba(139,92,246,0.14)' },
   ADMINISTRACION: { solid: '#f59e0b', soft: 'rgba(245,158,11,0.16)' },
-  COMUNICACION: { solid: '#db2777', soft: 'rgba(219,39,119,0.14)' },
-  MARKETING: { solid: '#8b5cf6', soft: 'rgba(139,92,246,0.14)' },
+  RENTA: { solid: '#16a34a', soft: 'rgba(22,163,74,0.14)' },
+  TALLER: { solid: '#db2777', soft: 'rgba(219,39,119,0.14)' },
   DEFAULT: { solid: '#64748b', soft: 'rgba(100,116,139,0.14)' },
 };
 

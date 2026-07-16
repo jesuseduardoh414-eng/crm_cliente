@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { proyectosService, tareasService } from '../services/api';
+import { maquinasService, proyectosService, tareasService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { useToast } from '../context/ToastContext';
@@ -15,6 +15,7 @@ import ModalImportar from '../components/ModalImportar';
 import RangeDatePicker from '../components/RangeDatePicker';
 import TaskAttachments from '../components/TaskAttachments';
 import TaskComments from '../components/TaskComments';
+import ProyectoMaquinaria from '../components/ProyectoMaquinaria';
 import { sortTareas, sortTareasLista } from '../utils/sorters';
 import { 
   Target, 
@@ -36,6 +37,7 @@ import {
   AlertTriangle,
   Search,
   User2,
+  Forklift,
   SlidersHorizontal
 } from 'lucide-react';
 
@@ -174,6 +176,19 @@ const TareaCard = ({ tarea, usuarioActual, onClick, onEliminar, onCambiarEstado 
             <span className="inline-flex items-center gap-1 text-[var(--color-text-dim)]">
               {asignadorLabel}
             </span>
+            {tarea.maquina && (
+              <>
+                <span className="hidden text-[var(--color-border)] lg:inline">•</span>
+                <Link
+                  to="/maquinaria"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 border border-brand-100 hover:bg-brand-100 transition-colors"
+                >
+                  <Forklift size={11} />
+                  {tarea.maquina.nombre}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -240,6 +255,11 @@ const ProyectoDetallePage = () => {
   const [proyecto, setProyecto] = useState(null);
   const [tareas, setTareas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  // Misma regla que el backend: un ADMIN, o quien sea miembro de la obra.
+  // Si el backend dice que no, responde 403; esto solo evita enseñar botones
+  // que no van a funcionar.
+  const puedeGestionarMaquinaria = usuario?.rol === 'ADMIN'
+    || (usuarios || []).some((u) => u.id === usuario?.id);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(false);
   const [modalImportar, setModalImportar] = useState(false);
@@ -596,6 +616,9 @@ const ProyectoDetallePage = () => {
         </div>
       </div>
 
+      {/* Maquinaria de la obra: qué máquinas tiene y quién las opera. */}
+      <ProyectoMaquinaria proyectoId={Number(id)} puedeGestionar={puedeGestionarMaquinaria} />
+
       <div className="mb-6 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 lg:px-5 lg:py-4 shadow-sm">
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-surface-3)] text-[var(--color-text-dim)]">
@@ -751,11 +774,26 @@ const ModalTarea = ({ tarea, proyectoId, usuarioActual, usuarios, onClose, onGua
     asignadoIds: getTaskAssignees(tarea).map((asignado) => asignado.id),
     prioridad: tarea?.prioridad || 'MEDIA',
     estado: tarea?.estado || 'PENDIENTE',
+    maquinaId: tarea?.maquinaId ?? '',
     fechaInicio: tarea?.fechaInicio ? tarea.fechaInicio.slice(0,10) : new Date().toISOString().slice(0,10),
     venceEn: tarea?.venceEn ? tarea.venceEn.slice(0,10) : ''
   });
   const [cargando, setCargando] = useState(false);
   const [archivos, setArchivos] = useState([]);
+  const [maquinas, setMaquinas] = useState([]);
+
+  // El catálogo de máquinas para el selector. Si falla no se bloquea la tarea:
+  // vincular una máquina es opcional.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const { maquinas: lista } = await maquinasService.listar();
+        if (vivo) setMaquinas(lista);
+      } catch { /* el selector queda vacío, la tarea se guarda igual */ }
+    })();
+    return () => { vivo = false; };
+  }, []);
 
   const sincronizarTarea = useCallback((cambios = {}) => {
     if (!tarea?.id) return;
@@ -880,6 +918,27 @@ const ModalTarea = ({ tarea, proyectoId, usuarioActual, usuarios, onClose, onGua
                 {creadorEsUsuarioActual ? t('taskCreatedByYou') : `${t('taskAssignedBy')} ${tarea.creador.nombre}`}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">
+                {t('taskMachine').toUpperCase()}
+              </label>
+              <select
+                className="form-input form-select"
+                value={form.maquinaId}
+                onChange={e => setForm({ ...form, maquinaId: e.target.value })}
+              >
+                <option value="">{t('taskNoMachine')}</option>
+                {maquinas.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre} — {m.tipo}{m.disponible ? '' : ' (ocupada)'}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                {t('taskMachineHint')}
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

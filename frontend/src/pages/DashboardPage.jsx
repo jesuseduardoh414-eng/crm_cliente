@@ -10,8 +10,11 @@ import {
   CheckCircle2,
   Users,
   BarChart3,
-  Code2,
-  Mail,
+  ShoppingCart,
+  Warehouse,
+  Truck,
+  Forklift,
+  Wrench,
   ArrowRight,
   ClipboardList,
   AlertCircle,
@@ -19,7 +22,6 @@ import {
   PlayCircle,
   CalendarDays,
   User,
-  Megaphone,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -28,10 +30,12 @@ import {
 } from 'lucide-react';
 
 const AREA_CONF = {
-  DESARROLLO:     { labelKey: 'areaDesarrollo',    color: 'var(--color-primary)', bg: 'rgb(var(--brand-600) / 0.08)', icon: <Code2 size={18} /> },
-  ADMINISTRACION: { labelKey: 'areaAdministracion', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', icon: <BarChart3 size={18} /> },
-  COMUNICACION:   { labelKey: 'areaComunicacion',   color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', icon: <Mail size={18} /> },
-  MARKETING:      { labelKey: 'areaMarketing',      color: '#db2777', bg: 'rgba(219,39,119,0.08)', icon: <Megaphone size={18} /> },
+  VENTAS:         { labelKey: 'areaVentas',         color: 'var(--color-primary)', bg: 'rgb(var(--brand-600) / 0.08)', icon: <ShoppingCart size={18} /> },
+  ALMACEN:        { labelKey: 'areaAlmacen',        color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   icon: <Warehouse size={18} /> },
+  COMPRAS:        { labelKey: 'areaCompras',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)',  icon: <Truck size={18} /> },
+  ADMINISTRACION: { labelKey: 'areaAdministracion', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  icon: <BarChart3 size={18} /> },
+  RENTA:          { labelKey: 'areaRenta',          color: '#16a34a', bg: 'rgba(22,163,74,0.08)',   icon: <Forklift size={18} /> },
+  TALLER:         { labelKey: 'areaTaller',         color: '#db2777', bg: 'rgba(219,39,119,0.08)',  icon: <Wrench size={18} /> },
 };
 
 const CALENDAR_FILTERS = [

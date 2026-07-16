@@ -8,23 +8,27 @@ import { proyectosService } from '../services/api';
 import { PageSkeleton } from '../components/Skeleton';
 import UserAvatar from '../components/UserAvatar';
 import { usePreferences } from '../context/PreferencesContext';
-import { 
-  Code2, 
-  BarChart3, 
-  Megaphone, 
-  User, 
-  ChevronDown, 
-  ClipboardList, 
-  Zap, 
-  CheckCircle2,
-  Mail
+import {
+  ShoppingCart,
+  Warehouse,
+  Truck,
+  Forklift,
+  Wrench,
+  BarChart3,
+  User,
+  ChevronDown,
+  ClipboardList,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 
 const AREA_CONF = {
-  DESARROLLO:     { labelKey: 'areaDesarrollo',    color: '#818cf8', bg: 'rgba(129,140,248,0.08)',  icon: <Code2 size={16} /> },
-  ADMINISTRACION: { labelKey: 'areaAdministracion', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',   icon: <BarChart3 size={16} /> },
-  COMUNICACION:   { labelKey: 'areaComunicacion',   color: '#10b981', bg: 'rgba(16,185,129,0.08)',  icon: <Mail size={16} /> },
-  MARKETING:      { labelKey: 'areaMarketing',      color: '#db2777', bg: 'rgba(219,39,119,0.08)',  icon: <Megaphone size={16} /> },
+  VENTAS:         { labelKey: 'areaVentas',         color: 'var(--color-primary)', bg: 'rgb(var(--brand-600) / 0.08)', icon: <ShoppingCart size={16} /> },
+  ALMACEN:        { labelKey: 'areaAlmacen',        color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   icon: <Warehouse size={16} /> },
+  COMPRAS:        { labelKey: 'areaCompras',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)',  icon: <Truck size={16} /> },
+  ADMINISTRACION: { labelKey: 'areaAdministracion', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  icon: <BarChart3 size={16} /> },
+  RENTA:          { labelKey: 'areaRenta',          color: '#16a34a', bg: 'rgba(22,163,74,0.08)',   icon: <Forklift size={16} /> },
+  TALLER:         { labelKey: 'areaTaller',         color: '#db2777', bg: 'rgba(219,39,119,0.08)',  icon: <Wrench size={16} /> },
 };
 
 const ROL_CONF = {
@@ -147,7 +151,7 @@ const ProyectoEquipo = ({ proyecto, equipoData }) => {
   const { t } = usePreferences();
   const [open, setOpen] = useState(true);
   const estadoColor = ESTADO_COLOR[proyecto.estado] || '#94a3b8';
-  const areaConf    = AREA_CONF[proyecto.creador?.area] || AREA_CONF.DESARROLLO;
+  const areaConf    = AREA_CONF[proyecto.creador?.area] || AREA_CONF.VENTAS;
 
   return (
     <div style={{

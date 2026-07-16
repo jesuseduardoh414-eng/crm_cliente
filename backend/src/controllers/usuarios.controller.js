@@ -567,7 +567,7 @@ const crear = async (req, res) => {
   }
 
   try {
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, area || 'DESARROLLO')) {
+    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, area || 'VENTAS')) {
       return res.status(403).json({ error: 'Solo puedes crear usuarios de tu propia área' });
     }
 
@@ -584,7 +584,7 @@ const crear = async (req, res) => {
         nombre: nombre.trim(),
         email:  email.toLowerCase().trim(),
         password: hashedPassword,
-        area: area || 'DESARROLLO',
+        area: area || 'VENTAS',
         rol:  rol  || 'MIEMBRO',
         verificado: false,
         verificationToken,

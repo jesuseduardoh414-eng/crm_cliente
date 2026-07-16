@@ -3,7 +3,22 @@ const normalizarAreas = (value) => String(value || '')
   .map((area) => area.trim())
   .filter(Boolean);
 
+// Deben coincidir con el enum Rol del schema.
+const ROLES = ['ADMIN', 'MIEMBRO', 'OPERADOR'];
+
+const esRolValido = (rol) => ROLES.includes(String(rol || '').toUpperCase());
+
+// Cualquier rol desconocido cae a MIEMBRO, que es el menos privilegiado.
+// Antes esto era `rol === 'ADMIN' ? 'ADMIN' : 'MIEMBRO'`, que convertia
+// silenciosamente a OPERADOR en MIEMBRO.
+const normalizarRol = (rol) => {
+  const r = String(rol || '').toUpperCase();
+  return ROLES.includes(r) ? r : 'MIEMBRO';
+};
+
 const esAdmin = (usuario) => usuario?.rol === 'ADMIN';
+
+const esOperador = (usuario) => usuario?.rol === 'OPERADOR';
 
 const esAdminGlobal = (usuario) => esAdmin(usuario) && usuario?.area === 'ADMINISTRACION';
 
@@ -40,8 +55,12 @@ const puedeAdministrarProyecto = (usuario, proyecto) => {
 };
 
 module.exports = {
+  ROLES,
+  esRolValido,
+  normalizarRol,
   normalizarAreas,
   esAdmin,
+  esOperador,
   esAdminGlobal,
   esAdminDeArea,
   proyectoCoincideConArea,

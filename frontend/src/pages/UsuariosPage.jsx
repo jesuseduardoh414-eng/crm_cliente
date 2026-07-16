@@ -26,7 +26,7 @@ import {
   Ban
 } from 'lucide-react';
 
-const AREAS = ['DESARROLLO', 'ADMINISTRACION', 'COMUNICACION', 'MARKETING'];
+const AREAS = ['VENTAS', 'ALMACEN', 'COMPRAS', 'ADMINISTRACION', 'RENTA', 'TALLER'];
 const ROLES = ['MIEMBRO', 'ADMIN'];
 
 const actividadVacia = () => ({
@@ -689,7 +689,7 @@ const ModalInvitar = ({ usuarioActual, onClose, onSuccess }) => {
   const { t } = usePreferences();
   const esAdminArea = usuarioActual?.rol === 'ADMIN' && usuarioActual?.area !== 'ADMINISTRACION';
   const areasDisponibles = esAdminArea ? [usuarioActual.area] : AREAS;
-  const [form, setForm] = useState({ nombre: '', email: '', area: areasDisponibles[0] || 'DESARROLLO', rol: 'MIEMBRO' });
+  const [form, setForm] = useState({ nombre: '', email: '', area: areasDisponibles[0] || 'VENTAS', rol: 'MIEMBRO' });
   const [cargando, setCargando] = useState(false);
   const { showToast } = useToast();
 
@@ -795,7 +795,7 @@ const ModalEditar = ({ usuarioActual, usuario, onClose, onSuccess }) => {
   const [form, setForm] = useState({
     nombre: usuario?.nombre || '',
     email: usuario?.email || '',
-    area: usuario?.area || areasDisponibles[0] || 'DESARROLLO',
+    area: usuario?.area || areasDisponibles[0] || 'VENTAS',
     rol: usuario?.rol || 'MIEMBRO'
   });
   const [cargando, setCargando] = useState(false);

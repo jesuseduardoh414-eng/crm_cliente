@@ -24,6 +24,20 @@ const INCLUDE_ASIGNADO = {
   creador: {
     select: { id: true, nombre: true, area: true },
   },
+  // La maquina viaja con la tarea para que el tablero pueda mostrarla sin una
+  // segunda peticion.
+  maquina: {
+    select: { id: true, nombre: true, tipo: true, disponible: true },
+  },
+};
+
+// El id de maquina llega del formulario como texto, '' o null.
+// Devuelve: undefined = no tocar, null = desvincular, numero = vincular.
+const normalizarMaquinaId = (valor) => {
+  if (valor === undefined) return undefined;
+  if (valor === null || valor === '') return null;
+  const n = parseInt(valor, 10);
+  return Number.isInteger(n) ? n : NaN; // NaN = invalido, lo valida quien llama
 };
 
 const visibilidadTareasPara = (usuarioId) => ({
@@ -309,11 +323,16 @@ const crear = async (req, res) => {
   const proyectoId = parseInt(req.params.id);
   if (isNaN(proyectoId)) return res.status(400).json({ error: 'ID de proyecto inválido' });
 
-  const { titulo, descripcion, numeroActividad, asignadoId, asignadoIds, prioridad, estado, fechaInicio, venceEn, dependeDeId, primerComentario } = req.body;
+  const { titulo, descripcion, numeroActividad, asignadoId, asignadoIds, prioridad, estado, fechaInicio, venceEn, dependeDeId, primerComentario, maquinaId } = req.body;
   const archivos = req.files;
 
   if (!titulo || titulo.trim() === '') {
     return res.status(400).json({ error: 'El título de la tarea es requerido' });
+  }
+
+  const maquinaIdNormalizado = normalizarMaquinaId(maquinaId);
+  if (Number.isNaN(maquinaIdNormalizado)) {
+    return res.status(400).json({ error: 'La máquina indicada no es válida' });
   }
 
   try {
@@ -347,6 +366,12 @@ const crear = async (req, res) => {
       return res.status(400).json({ error: 'Solo puedes asignar tareas a miembros de este proyecto' });
     }
 
+    // La maquina tiene que existir; si no, la tarea apuntaria a la nada.
+    if (maquinaIdNormalizado) {
+      const maquina = await prisma.maquina.findUnique({ where: { id: maquinaIdNormalizado } });
+      if (!maquina) return res.status(404).json({ error: 'La máquina indicada no existe' });
+    }
+
     const numeroActividadNormalizado = normalizarNumeroActividad(numeroActividad);
 
     // Crear la tarea
@@ -375,6 +400,7 @@ const crear = async (req, res) => {
         },
         creadorId:   req.usuario.id,
         dependeDeId: dependeDeId ? parseInt(dependeDeId) : null,
+        maquinaId:   maquinaIdNormalizado ?? null,
       },
       include: INCLUDE_ASIGNADO,
     });
@@ -436,10 +462,15 @@ const editar = async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
-  const { titulo, descripcion, numeroActividad, asignadoId, asignadoIds, prioridad, estado, fechaInicio, venceEn, dependeDeId } = req.body;
+  const { titulo, descripcion, numeroActividad, asignadoId, asignadoIds, prioridad, estado, fechaInicio, venceEn, dependeDeId, maquinaId } = req.body;
+
+  const maquinaIdNormalizado = normalizarMaquinaId(maquinaId);
+  if (Number.isNaN(maquinaIdNormalizado)) {
+    return res.status(400).json({ error: 'La máquina indicada no es válida' });
+  }
 
   try {
-    const existente = await prisma.tarea.findUnique({ 
+    const existente = await prisma.tarea.findUnique({
       where: { id },
       include: {
         proyecto: { include: { miembros: { select: { id: true } } } },
@@ -466,6 +497,11 @@ const editar = async (req, res) => {
       return res.status(400).json({ error: 'Solo puedes asignar tareas a miembros de este proyecto' });
     }
 
+    if (maquinaIdNormalizado) {
+      const maquina = await prisma.maquina.findUnique({ where: { id: maquinaIdNormalizado } });
+      if (!maquina) return res.status(404).json({ error: 'La máquina indicada no existe' });
+    }
+
     const numeroActividadNormalizado = normalizarNumeroActividad(numeroActividad);
 
     let dInicio = fechaInicio !== undefined ? (fechaInicio ? new Date(fechaInicio) : new Date()) : undefined;
@@ -489,6 +525,7 @@ const editar = async (req, res) => {
             ? (existente.estado === 'HECHO' ? existente.completadoEn || new Date() : new Date())
             : null
         }),
+        ...(maquinaIdNormalizado !== undefined && { maquinaId: maquinaIdNormalizado }),
         ...(asignadoIdsNormalizados !== undefined && { asignadoId: asignadoPrincipalId }),
         ...(asignadoIdsNormalizados !== undefined && {
           asignados: {

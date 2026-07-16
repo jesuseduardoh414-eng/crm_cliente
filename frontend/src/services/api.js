@@ -149,6 +149,38 @@ export const proyectosService = {
     });
     return handleResponse(res);
   },
+
+  // ── Maquinaria de la obra, con su operador ──────────────────────────────
+  listarMaquinaria: async (proyectoId) => {
+    const res = await fetch(`${API_URL}/proyectos/${proyectoId}/maquinaria`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  asignarMaquina: async (proyectoId, datos) => {
+    const res = await fetch(`${API_URL}/proyectos/${proyectoId}/maquinaria`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+
+  actualizarAsignacion: async (asignacionId, datos) => {
+    const res = await fetch(`${API_URL}/proyectos/maquinaria/${asignacionId}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+
+  retirarMaquina: async (asignacionId) => {
+    const res = await fetch(`${API_URL}/proyectos/maquinaria/${asignacionId}`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  operadoresAsignables: async () => {
+    const res = await fetch(`${API_URL}/proyectos/operadores-asignables`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
 };
 
 // ── Tareas ────────────────────────────────────────────────────────────────
@@ -446,6 +478,152 @@ export const adjuntosService = {
 };
 
 // ── Estadísticas ──────────────────────────────────────────────────────────
+// ── Maquinaria en renta ───────────────────────────────────────────────────
+const qs = (params = {}) => {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') p.append(k, v);
+  });
+  const s = p.toString();
+  return s ? `?${s}` : '';
+};
+
+export const maquinasService = {
+  listar: async (filtros = {}) => {
+    const res = await fetch(`${API_URL}/maquinas${qs(filtros)}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  obtener: async (id) => {
+    const res = await fetch(`${API_URL}/maquinas/${id}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  tipos: async () => {
+    const res = await fetch(`${API_URL}/maquinas/tipos`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  crear: async (datos) => {
+    const res = await fetch(`${API_URL}/maquinas`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  editar: async (id, datos) => {
+    const res = await fetch(`${API_URL}/maquinas/${id}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  cambiarDisponibilidad: async (id, disponible) => {
+    const res = await fetch(`${API_URL}/maquinas/${id}/disponibilidad`, {
+      method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ disponible }),
+    });
+    return handleResponse(res);
+  },
+  eliminar: async (id) => {
+    const res = await fetch(`${API_URL}/maquinas/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return handleResponse(res);
+  },
+  // Galeria
+  listarImagenes: async (id) => {
+    const res = await fetch(`${API_URL}/maquinas/${id}/imagenes`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  subirImagenes: async (id, files) => {
+    const fd = new FormData();
+    Array.from(files || []).forEach((f) => fd.append('imagenes', f));
+    const res = await fetch(`${API_URL}/maquinas/${id}/imagenes`, {
+      method: 'POST', headers: getHeaders(true), body: fd,
+    });
+    return handleResponse(res);
+  },
+  eliminarImagen: async (imagenId) => {
+    const res = await fetch(`${API_URL}/maquinas/imagenes/${imagenId}`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+};
+
+// ── Operadores ────────────────────────────────────────────────────────────
+export const operadoresService = {
+  listar: async (filtros = {}) => {
+    const res = await fetch(`${API_URL}/operadores${qs(filtros)}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  miPerfil: async () => {
+    const res = await fetch(`${API_URL}/operadores/mi-perfil`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  candidatos: async () => {
+    const res = await fetch(`${API_URL}/operadores/candidatos`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  crear: async (datos) => {
+    const res = await fetch(`${API_URL}/operadores`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  editar: async (id, datos) => {
+    const res = await fetch(`${API_URL}/operadores/${id}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  cambiarDisponibilidad: async (id, disponible) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/disponibilidad`, {
+      method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ disponible }),
+    });
+    return handleResponse(res);
+  },
+  eliminar: async (id) => {
+    const res = await fetch(`${API_URL}/operadores/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return handleResponse(res);
+  },
+};
+
+// ── Panel de noticias ─────────────────────────────────────────────────────
+export const publicacionesService = {
+  listar: async (filtros = {}) => {
+    const res = await fetch(`${API_URL}/publicaciones${qs(filtros)}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  obtener: async (id) => {
+    const res = await fetch(`${API_URL}/publicaciones/${id}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  crear: async (datos) => {
+    const res = await fetch(`${API_URL}/publicaciones`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  editar: async (id, datos) => {
+    const res = await fetch(`${API_URL}/publicaciones/${id}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  eliminar: async (id) => {
+    const res = await fetch(`${API_URL}/publicaciones/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return handleResponse(res);
+  },
+  subirImagenes: async (id, files) => {
+    const fd = new FormData();
+    Array.from(files || []).forEach((f) => fd.append('imagenes', f));
+    const res = await fetch(`${API_URL}/publicaciones/${id}/imagenes`, {
+      method: 'POST', headers: getHeaders(true), body: fd,
+    });
+    return handleResponse(res);
+  },
+  eliminarImagen: async (imagenId) => {
+    const res = await fetch(`${API_URL}/publicaciones/imagenes/${imagenId}`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+};
+
 export const statsService = {
   getAdminStats: async () => {
     const res = await fetch(`${API_URL}/stats/admin?t=${Date.now()}`, {

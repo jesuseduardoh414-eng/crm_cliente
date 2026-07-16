@@ -12,6 +12,9 @@ const usuariosRoutes                    = require('./routes/usuarios.routes');
 const notificacionesRoutes              = require('./routes/notificaciones.routes');
 const statsRoutes                       = require('./routes/stats.routes');
 const agendaRoutes                      = require('./routes/agenda.routes');
+const maquinasRoutes                    = require('./routes/maquinas.routes');
+const operadoresRoutes                  = require('./routes/operadores.routes');
+const publicacionesRoutes               = require('./routes/publicaciones.routes');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +60,9 @@ app.use('/api/usuarios',                    usuariosRoutes);
 app.use('/api/notificaciones',              notificacionesRoutes);
 app.use('/api/stats',                       statsRoutes);
 app.use('/api/agenda',                      agendaRoutes);
+app.use('/api/maquinas',                    maquinasRoutes);
+app.use('/api/operadores',                  operadoresRoutes);
+app.use('/api/publicaciones',               publicacionesRoutes);
 
 // Ruta de salud para verificar que el servidor está corriendo
 app.get('/api/health', (_req, res) => {

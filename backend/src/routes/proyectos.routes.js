@@ -14,6 +14,13 @@ const upload = require('../middlewares/upload.middleware');
 
 const { listar: listarComentarios, crear: crearComentario } = require('../controllers/comentarios.controller');
 const { listar: listarAdjuntos, subir: subirAdjunto, eliminar: eliminarAdjunto } = require('../controllers/adjuntos.controller');
+const {
+  listar: listarAsignaciones,
+  crear: crearAsignacion,
+  actualizar: actualizarAsignacion,
+  eliminar: eliminarAsignacion,
+  operadoresDisponibles: operadoresAsignables,
+} = require('../controllers/asignaciones.controller');
 
 router.get('/',              listar);
 router.get('/plantillas',    listarPlantillas);
@@ -32,5 +39,14 @@ router.post('/:id/comentarios', crearComentario);
 router.get('/:id/adjuntos',  listarAdjuntos);
 router.post('/:id/adjuntos', upload.fields([{ name: 'archivo', maxCount: 1 }, { name: 'archivos', maxCount: 10 }]), subirAdjunto);
 router.delete('/adjuntos/:id', eliminarAdjunto);
+
+// Maquinaria de la obra, con su operador.
+// Cuelga del proyecto porque su permiso es el del proyecto: quien administra la
+// obra decide su maquinaria.
+router.get('/operadores-asignables', operadoresAsignables); // antes de /:id
+router.get('/:id/maquinaria',  listarAsignaciones);
+router.post('/:id/maquinaria', crearAsignacion);
+router.put('/maquinaria/:asignacionId',    actualizarAsignacion);
+router.delete('/maquinaria/:asignacionId', eliminarAsignacion);
 
 module.exports = router;

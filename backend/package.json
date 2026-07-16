@@ -10,7 +10,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node prisma/seed.js",
-    "vercel-build": "prisma generate"
+    "vercel-build": "prisma generate",
+    "seed:demo": "node prisma/seed-demo.js",
+    "seed:demo:limpiar": "node prisma/seed-demo.js --limpiar"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
