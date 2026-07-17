@@ -26,16 +26,18 @@ const USUARIOS = [
     nombre: 'Administrador',
     email: 'admin@local.test',
     area: 'ADMINISTRACION',
-    rol: 'ADMIN',
-    puesto: 'Administrador del sistema',
+    // La mesa directiva de ADMINISTRACION administra toda la casa: es el rol
+    // con el que arranca el panel para que haya quien invite y modere.
+    rol: 'MESA_DIRECTIVA',
+    puesto: 'Mesa directiva',
     password: process.env.SEED_ADMIN_PASSWORD || 'Admin.2026.local',
   },
   {
     nombre: 'Usuario Panel',
     email: 'usuario@local.test',
     area: 'VENTAS',
-    rol: 'MIEMBRO',
-    puesto: 'Miembro del equipo',
+    rol: 'FEDERACION',
+    puesto: 'Miembro de la federación',
     password: process.env.SEED_MIEMBRO_PASSWORD || 'Panel.2026.local',
   },
 ];

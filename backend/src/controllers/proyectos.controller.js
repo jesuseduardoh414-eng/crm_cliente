@@ -1,12 +1,13 @@
 // Controlador de Proyectos
-// ADMIN †’ ve todos los proyectos
-// MIEMBRO †’ solo los proyectos donde tiene tareas asignadas
+// CONSEJO         -> ve todas las obras, no las administra
+// MESA_DIRECTIVA  -> administra las obras de su area
+// FEDERACION      -> solo las obras donde participa
 
 const prisma = require('../lib/prisma');
 const { registrarActividad } = require('../utils/logger');
 const { sortProyectos } = require('../utils/sort.utils');
 const { addDays, buildTemplateTasksFromProject } = require('../utils/plantillas.utils');
-const { esAdmin, buildScopeProyectoParaAdmin, puedeAdministrarProyecto, puedeGestionarArea } = require('../utils/permissions.utils');
+const { puedeAdministrar, veTodo, buildScopeProyectoVisible, puedeAdministrarProyecto, puedeGestionarArea } = require('../utils/permissions.utils');
 
 // Campos comunes del include
 const INCLUDE_PROYECTO = {
@@ -172,15 +173,18 @@ const aplicarPlantillaATareas = async ({ tx, proyecto, plantilla, creadorId }) =
 };
 
 // €€ GET /api/proyectos €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
-// ADMIN: todos los proyectos
-// MIEMBRO: solo proyectos donde es miembro explícito
+// CONSEJO: todas las obras de la federación (supervisa, no administra)
+// MESA_DIRECTIVA: las obras de su área
+// FEDERACION: solo las obras donde participa
 const listar = async (req, res) => {
   try {
-    const usuarioEsAdmin = esAdmin(req.usuario);
-    const scopeAdmin = buildScopeProyectoParaAdmin(req.usuario);
+    // Aquí la pregunta es quién VE, no quién administra: si fuera lo segundo,
+    // el consejo entraría por la rama de miembro y no vería ninguna obra.
+    const veTodasLasObras = veTodo(req.usuario);
+    const scopeVisible = buildScopeProyectoVisible(req.usuario);
 
-    const where = usuarioEsAdmin
-      ? scopeAdmin
+    const where = veTodasLasObras
+      ? scopeVisible
       : {
           OR: [
             { miembros: { some: { id: req.usuario.id } } },
@@ -217,12 +221,12 @@ const listar = async (req, res) => {
         ...resto,
         progreso,
         progresoGeneral: progreso,
-        progresoMiembro: usuarioEsAdmin ? null : progresoMiembro,
-        tareasMiembro: usuarioEsAdmin ? null : tareasMiembro.length,
+        progresoMiembro: veTodasLasObras ? null : progresoMiembro,
+        tareasMiembro: veTodasLasObras ? null : tareasMiembro.length,
       };
     });
 
-    return res.json({ proyectos: sortProyectos(proyectosConProgreso), filtradoPorUsuario: !usuarioEsAdmin });
+    return res.json({ proyectos: sortProyectos(proyectosConProgreso), filtradoPorUsuario: !veTodasLasObras });
   } catch (error) {
     console.error('[proyectos.listar]', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
@@ -232,7 +236,7 @@ const listar = async (req, res) => {
 const listarPlantillas = async (req, res) => {
   try {
     const plantillas = await prisma.plantillaProyecto.findMany({
-      where: esAdmin(req.usuario) ? buildScopeProyectoParaAdmin(req.usuario) : undefined,
+      where: veTodo(req.usuario) ? buildScopeProyectoVisible(req.usuario) : undefined,
       orderBy: [{ creadoEn: 'desc' }],
       include: INCLUDE_PLANTILLA,
     });
@@ -354,7 +358,7 @@ const equipo = async (req, res) => {
     });
     if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
 
-    if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
+    if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
       return res.status(403).json({ error: 'No tienes permiso para ver el equipo de este proyecto' });
     }
 
@@ -396,7 +400,7 @@ const crear = async (req, res) => {
     const idsProyecto = ids.includes(req.usuario.id) ? ids : [...ids, req.usuario.id];
 
     const areaProyecto = area || 'VENTAS';
-    if (esAdmin(req.usuario) && !areasDeProyecto(areaProyecto).every((areaItem) => puedeGestionarArea(req.usuario, areaItem))) {
+    if (puedeAdministrar(req.usuario) && !areasDeProyecto(areaProyecto).every((areaItem) => puedeGestionarArea(req.usuario, areaItem))) {
       return res.status(403).json({ error: 'Solo puedes crear proyectos en tu propia área' });
     }
 
@@ -421,7 +425,7 @@ const crear = async (req, res) => {
       return res.status(404).json({ error: 'La plantilla seleccionada no existe' });
     }
 
-    if (plantilla && esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, { area: plantilla.area })) {
+    if (plantilla && puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, { area: plantilla.area })) {
       return res.status(403).json({ error: 'No tienes permiso para usar plantillas de otra área' });
     }
 
@@ -508,7 +512,7 @@ const editar = async (req, res) => {
     });
     if (!existente) return res.status(404).json({ error: 'Proyecto no encontrado' });
 
-    if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, existente)) {
+    if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, existente)) {
       return res.status(403).json({ error: 'No tienes permiso para editar este proyecto' });
     }
 
@@ -529,7 +533,7 @@ const editar = async (req, res) => {
       const idsExistentes = new Set(existente.miembros.map(m => m.id));
       const idsNuevos = ids.filter(mid => !idsExistentes.has(mid));
       const areaProyecto = area || existente.area;
-      if (esAdmin(req.usuario) && !areasDeProyecto(areaProyecto).every((areaItem) => puedeGestionarArea(req.usuario, areaItem))) {
+      if (puedeAdministrar(req.usuario) && !areasDeProyecto(areaProyecto).every((areaItem) => puedeGestionarArea(req.usuario, areaItem))) {
         return res.status(403).json({ error: 'Solo puedes mover el proyecto dentro de tu propia área' });
       }
       const { invalidos } = await validarMiembrosPorArea(ids);
@@ -574,7 +578,7 @@ const editar = async (req, res) => {
 // €€ DELETE /api/proyectos/:id €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 const eliminar = async (req, res) => {
   const id = parseInt(req.params.id);
-  if (!esAdmin(req.usuario)) {
+  if (!puedeAdministrar(req.usuario)) {
     return res.status(403).json({ error: 'Solo los administradores pueden eliminar proyectos' });
   }
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });

@@ -11,7 +11,7 @@ const XLSX = require('xlsx');
 const prisma = require('../lib/prisma');
 const { registrarActividad } = require('../utils/logger');
 const { serializeTasksForExport } = require('../utils/plantillas.utils');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 const {
   construirVistaPrevia,
   parseRowsFromFile,
@@ -39,7 +39,7 @@ const verificarAccesoProyecto = async (proyectoId, usuario) => {
   });
 
   if (!proyecto) return { error: 'Proyecto no encontrado', status: 404 };
-  if (esAdmin(usuario)) {
+  if (puedeAdministrar(usuario)) {
     if (!puedeAdministrarProyecto(usuario, proyecto)) {
       return { error: 'No tienes permiso para acceder a este proyecto', status: 403 };
     }
@@ -108,7 +108,7 @@ const importar = async (req, res) => {
     }
 
     // 2. Verificar permisos: ADMIN puede siempre, MIEMBRO debe estar en el proyecto
-    if (esAdmin(req.usuario)) {
+    if (puedeAdministrar(req.usuario)) {
       if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para importar tareas en este proyecto' });
       }
@@ -186,7 +186,7 @@ const vistaPreviaImportacion = async (req, res) => {
       return res.status(404).json({ error: 'Proyecto no encontrado' });
     }
 
-    if (esAdmin(req.usuario)) {
+    if (puedeAdministrar(req.usuario)) {
       if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para importar tareas en este proyecto' });
       }
@@ -227,7 +227,7 @@ const confirmarImportacion = async (req, res) => {
       return res.status(404).json({ error: 'Proyecto no encontrado' });
     }
 
-    if (esAdmin(req.usuario)) {
+    if (puedeAdministrar(req.usuario)) {
       if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para importar tareas en este proyecto' });
       }

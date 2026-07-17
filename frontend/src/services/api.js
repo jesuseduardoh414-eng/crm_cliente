@@ -194,6 +194,12 @@ export const tareasService = {
     return handleResponse(res);
   },
 
+  // Las que abrió el panel de noticias: no son de ninguna obra.
+  listarPanel: async (filtros = {}) => {
+    const res = await fetch(`${API_URL}/tareas/panel${qs(filtros)}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
   crear: async (proyectoId, datos) => {
     const isMultipart = datos instanceof FormData;
     const res = await fetch(`${API_URL}/proyectos/${proyectoId}/tareas`, {
@@ -545,17 +551,14 @@ export const maquinasService = {
 };
 
 // ── Operadores ────────────────────────────────────────────────────────────
+// Fichas del catálogo: las sube cualquier miembro y el equipo las califica.
 export const operadoresService = {
   listar: async (filtros = {}) => {
     const res = await fetch(`${API_URL}/operadores${qs(filtros)}`, { headers: getHeaders() });
     return handleResponse(res);
   },
-  miPerfil: async () => {
-    const res = await fetch(`${API_URL}/operadores/mi-perfil`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
-  candidatos: async () => {
-    const res = await fetch(`${API_URL}/operadores/candidatos`, { headers: getHeaders() });
+  obtener: async (id) => {
+    const res = await fetch(`${API_URL}/operadores/${id}`, { headers: getHeaders() });
     return handleResponse(res);
   },
   crear: async (datos) => {
@@ -578,6 +581,56 @@ export const operadoresService = {
   },
   eliminar: async (id) => {
     const res = await fetch(`${API_URL}/operadores/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  // Lo que opina el equipo
+  listarCalificaciones: async (id) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/calificaciones`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  calificar: async (id, datos) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/calificaciones`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  eliminarCalificacion: async (id) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/calificaciones`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  listarReportes: async (id, filtros = {}) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/reportes${qs(filtros)}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  reportar: async (id, datos) => {
+    const res = await fetch(`${API_URL}/operadores/${id}/reportes`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(datos),
+    });
+    return handleResponse(res);
+  },
+  resolverReporte: async (reporteId, estado) => {
+    const res = await fetch(`${API_URL}/operadores/reportes/${reporteId}`, {
+      method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ estado }),
+    });
+    return handleResponse(res);
+  },
+  eliminarReporte: async (reporteId) => {
+    const res = await fetch(`${API_URL}/operadores/reportes/${reporteId}`, {
+      method: 'DELETE', headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  subirImagenes: async (id, files) => {
+    const fd = new FormData();
+    Array.from(files || []).forEach((f) => fd.append('imagenes', f));
+    const res = await fetch(`${API_URL}/operadores/${id}/imagenes`, {
+      method: 'POST', headers: getHeaders(true), body: fd,
+    });
     return handleResponse(res);
   },
 };

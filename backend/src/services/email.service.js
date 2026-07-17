@@ -30,7 +30,7 @@ const sendEmailViaAPI = async (options = {}) => {
 
   const payload = {
     sender: {
-      name: process.env.BREVO_SENDER_NAME || 'Centralita CRM',
+      name: process.env.BREVO_SENDER_NAME || 'FEMIC Maquinaria',
       email: senderEmail
     },
     to: [{ email: toEmail }],
@@ -72,7 +72,7 @@ const sendResetEmail = async (email, token) => {
   try {
     await sendEmailViaAPI({
       to: email,
-      subject: 'Restablecer contraseña - CRM',
+      subject: 'Restablecer contraseña - FEMIC Maquinaria',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
           <h2>Restablecer tu contraseña</h2>
@@ -101,10 +101,10 @@ const sendVerificationEmail = async (email, token) => {
   try {
     await sendEmailViaAPI({
       to: email,
-      subject: 'Verifica tu cuenta - CRM',
+      subject: 'Verifica tu cuenta - FEMIC Maquinaria',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
-          <h2>Bienvenido al CRM</h2>
+          <h2>Bienvenido al panel de FEMIC Maquinaria</h2>
           <p>Por favor, verifica tu cuenta haciendo clic en el boton de abajo:</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verifyUrl}"

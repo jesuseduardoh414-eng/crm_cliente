@@ -1,14 +1,19 @@
 // Controlador de Tareas
 // GET    /api/proyectos/:id/tareas  → listar tareas de un proyecto
 // POST   /api/proyectos/:id/tareas  → crear tarea
+// GET    /api/tareas/panel          → listar las tareas del panel (sin obra)
 // PUT    /api/tareas/:id            → editar tarea
 // DELETE /api/tareas/:id            → eliminar tarea
 // PATCH  /api/tareas/:id/estado     → actualizar solo el estado
+//
+// Hay dos clases de tarea y se distinguen por si tienen proyecto:
+// las de una obra, cuyo permiso es el de la obra, y las del panel, que nacen de
+// una noticia, no son de nadie y cualquiera puede tomar.
 
 const prisma = require('../lib/prisma');
 const { registrarActividad } = require('../utils/logger');
 const { sortTareas } = require('../utils/sort.utils');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, veTodo, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 
 const OFFSET_MEXICO_MS = 6 * 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,6 +33,10 @@ const INCLUDE_ASIGNADO = {
   // segunda peticion.
   maquina: {
     select: { id: true, nombre: true, tipo: true, disponible: true },
+  },
+  // De que noticia salio, para poder volver a ella desde el tablero.
+  publicacion: {
+    select: { id: true, titulo: true, tipo: true, estado: true },
   },
 };
 
@@ -55,6 +64,45 @@ const puedeAccederTarea = (tarea, usuarioId) => (
   || tarea.creadorId === usuarioId
   || tarea.asignados?.some((asignado) => asignado.id === usuarioId)
 );
+
+const esTareaDePanel = (tarea) => !tarea.proyectoId;
+
+// Quien puede trabajar una tarea: moverla, editarla, tomarla.
+//
+// Las del panel salen de una noticia y no son de nadie: no hay obra de la que
+// ser miembro, y el pendiente que abre "hay una retro libre" lo puede atender
+// cualquiera. Las de una obra siguen con el permiso de siempre, el de la obra.
+const puedeTrabajarTarea = (usuario, tarea) => {
+  if (esTareaDePanel(tarea)) return true;
+  if (puedeAdministrar(usuario)) return puedeAdministrarProyecto(usuario, tarea.proyecto);
+  const esMiembro = tarea.proyecto.miembros.some((m) => m.id === usuario.id);
+  return esMiembro && puedeAccederTarea(tarea, usuario.id);
+};
+
+// Borrar es otra cosa: una tarea del panel la quita quien la abrio o la mesa
+// directiva. Que cualquiera pueda tomarla no significa que pueda hacerla
+// desaparecer.
+const puedeEliminarTarea = (usuario, tarea) => {
+  if (esTareaDePanel(tarea)) return puedeAdministrar(usuario) || tarea.creadorId === usuario.id;
+  return puedeTrabajarTarea(usuario, tarea);
+};
+
+// Los asignados de una tarea de obra tienen que ser miembros de esa obra; los
+// de una tarea del panel, cualquier usuario activo.
+const validarAsignados = async (proyecto, asignadoIds = []) => {
+  if (asignadoIds.length === 0) return null;
+
+  if (proyecto) {
+    const todosSonMiembros = asignadoIds.every((id) => proyecto.miembros.some((m) => m.id === id));
+    return todosSonMiembros ? null : 'Solo puedes asignar tareas a miembros de este proyecto';
+  }
+
+  const existen = await prisma.usuario.findMany({
+    where: { id: { in: asignadoIds }, estado: 'activo' },
+    select: { id: true },
+  });
+  return existen.length === asignadoIds.length ? null : 'Alguno de los usuarios asignados no existe o está inactivo';
+};
 
 const parseArrayValue = (value) => {
   if (value === undefined) return undefined;
@@ -93,10 +141,6 @@ const normalizarNumeroActividad = (numeroActividad) => {
   return Number.isNaN(numero) || numero <= 0 ? null : numero;
 };
 
-const asignadosPertenecenAProyecto = (proyecto, asignadoIds = []) => (
-  asignadoIds.every((asignadoId) => proyecto.miembros.some((m) => m.id === asignadoId))
-);
-
 // Helper para crear notificaciones
 const crearNotificacion = async (
   usuarioId,
@@ -130,8 +174,8 @@ const crearNotificacionesAsignacion = async ({ asignadoIds = [], actorId, mensaj
 };
 
 // €€ GET /api/proyectos/:id/tareas €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
-// ADMIN → ve todas las tareas del proyecto
-// MIEMBRO → ve todas las tareas de los proyectos donde es miembro
+// CONSEJO y MESA_DIRECTIVA → ven todas las tareas de la obra
+// FEDERACION → solo las suyas, en las obras donde participa
 const getHoyMexico = () => {
   const ahoraMexico = new Date(Date.now() - OFFSET_MEXICO_MS);
   const year = ahoraMexico.getUTCFullYear();
@@ -217,12 +261,13 @@ const listar = async (req, res) => {
     });
     if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
 
-    // Verificar permisos: ADMIN puede todo; MIEMBRO puede entrar si participa en el proyecto
-    const usuarioEsAdmin = esAdmin(req.usuario);
-    if (usuarioEsAdmin && !puedeAdministrarProyecto(req.usuario, proyecto)) {
+    // El consejo y la mesa ven las tareas de la obra; la federación, solo si
+    // participa. A la mesa se le exige además que la obra sea de su área.
+    const veTodasLasTareas = veTodo(req.usuario);
+    if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
       return res.status(403).json({ error: 'No tienes permiso para ver las tareas de este proyecto' });
     }
-    if (!usuarioEsAdmin) {
+    if (!veTodasLasTareas) {
       const esMiembro = proyecto.miembros.some(m => m.id === req.usuario.id);
       const participaPorTarea = await prisma.tarea.findFirst({
         where: {
@@ -244,7 +289,7 @@ const listar = async (req, res) => {
     const tareas = await prisma.tarea.findMany({
       where: {
         proyectoId,
-        ...(usuarioEsAdmin ? {} : visibilidadTareasPara(req.usuario.id)),
+        ...(veTodasLasTareas ? {} : visibilidadTareasPara(req.usuario.id)),
       },
       orderBy: { creadoEn: 'asc' },
       include: INCLUDE_ASIGNADO,
@@ -310,10 +355,60 @@ const listar = async (req, res) => {
           porcentaje: totalMiembro > 0 ? Math.round((hechasMiembro / totalMiembro) * 100) : 0,
         },
       },
-      filtradoPorUsuario: !usuarioEsAdmin, 
+      filtradoPorUsuario: !veTodasLasTareas, 
     });
   } catch (error) {
     console.error('[tareas.listar]', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// €€ GET /api/tareas/panel €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
+// Las tareas que abrio el panel de noticias. No cuelgan de ninguna obra, asi
+// que las ve todo el equipo: son el pendiente comun.
+const listarPanel = async (req, res) => {
+  try {
+    const { estado, mias } = req.query;
+
+    const estadosValidos = ['PENDIENTE', 'EN_PROGRESO', 'HECHO'];
+    if (estado && !estadosValidos.includes(estado)) {
+      return res.status(400).json({ error: `Estado inválido. Debe ser: ${estadosValidos.join(', ')}` });
+    }
+
+    const tareas = await prisma.tarea.findMany({
+      where: {
+        proyectoId: null,
+        ...(estado ? { estado } : {}),
+        ...(mias === 'true'
+          ? {
+              OR: [
+                { asignadoId: req.usuario.id },
+                { asignados: { some: { id: req.usuario.id } } },
+                { creadorId: req.usuario.id },
+              ],
+            }
+          : {}),
+      },
+      include: INCLUDE_ASIGNADO,
+      orderBy: { creadoEn: 'desc' },
+    });
+
+    const total = tareas.length;
+    const hechas = tareas.filter((t) => t.estado === 'HECHO').length;
+    const enProgreso = tareas.filter((t) => t.estado === 'EN_PROGRESO').length;
+
+    return res.json({
+      tareas: sortTareas(tareas),
+      progreso: {
+        total,
+        hechas,
+        enProgreso,
+        pendientes: total - hechas - enProgreso,
+        porcentaje: total > 0 ? Math.round((hechas / total) * 100) : 0,
+      },
+    });
+  } catch (error) {
+    console.error('[tareas.listarPanel]', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
@@ -346,7 +441,7 @@ const crear = async (req, res) => {
     const asignadoPrincipalId = asignadoIdsNormalizados?.[0] ?? null;
 
     // Si es MIEMBRO, verificar que pertenece a la lista de miembros del proyecto
-    if (esAdmin(req.usuario)) {
+    if (puedeAdministrar(req.usuario)) {
       if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para crear tareas en este proyecto' });
       }
@@ -362,9 +457,8 @@ const crear = async (req, res) => {
       }
     }
 
-    if (!asignadosPertenecenAProyecto(proyecto, asignadoIdsNormalizados || [])) {
-      return res.status(400).json({ error: 'Solo puedes asignar tareas a miembros de este proyecto' });
-    }
+    const errorAsignados = await validarAsignados(proyecto, asignadoIdsNormalizados || []);
+    if (errorAsignados) return res.status(400).json({ error: errorAsignados });
 
     // La maquina tiene que existir; si no, la tarea apuntaria a la nada.
     if (maquinaIdNormalizado) {
@@ -481,20 +575,13 @@ const editar = async (req, res) => {
     const asignadoIdsNormalizados = normalizarAsignadoIds(asignadoIds, asignadoId);
     const asignadoPrincipalId = asignadoIdsNormalizados?.[0] ?? null;
 
-    // Verificar permisos: ADMIN o miembro con visibilidad sobre esta tarea
-    if (esAdmin(req.usuario)) {
-      if (!puedeAdministrarProyecto(req.usuario, existente.proyecto)) {
-        return res.status(403).json({ error: 'No tienes permiso para editar esta tarea' });
-      }
-    } else {
-      const esMiembro = existente.proyecto.miembros.some(m => m.id === req.usuario.id);
-      if (!esMiembro || !puedeAccederTarea(existente, req.usuario.id)) {
-        return res.status(403).json({ error: 'No tienes permiso para editar esta tarea' });
-      }
+    if (!puedeTrabajarTarea(req.usuario, existente)) {
+      return res.status(403).json({ error: 'No tienes permiso para editar esta tarea' });
     }
 
-    if (asignadoIdsNormalizados !== undefined && !asignadosPertenecenAProyecto(existente.proyecto, asignadoIdsNormalizados)) {
-      return res.status(400).json({ error: 'Solo puedes asignar tareas a miembros de este proyecto' });
+    if (asignadoIdsNormalizados !== undefined) {
+      const errorAsignados = await validarAsignados(existente.proyecto, asignadoIdsNormalizados);
+      if (errorAsignados) return res.status(400).json({ error: errorAsignados });
     }
 
     if (maquinaIdNormalizado) {
@@ -588,16 +675,8 @@ const eliminar = async (req, res) => {
     });
     if (!existente) return res.status(404).json({ error: 'Tarea no encontrada' });
 
-    // Verificar permisos: ADMIN o miembro con visibilidad sobre esta tarea
-    if (esAdmin(req.usuario)) {
-      if (!puedeAdministrarProyecto(req.usuario, existente.proyecto)) {
-        return res.status(403).json({ error: 'No tienes permiso para eliminar esta tarea' });
-      }
-    } else {
-      const esMiembro = existente.proyecto.miembros.some(m => m.id === req.usuario.id);
-      if (!esMiembro || !puedeAccederTarea(existente, req.usuario.id)) {
-        return res.status(403).json({ error: 'No tienes permiso para eliminar esta tarea' });
-      }
+    if (!puedeEliminarTarea(req.usuario, existente)) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar esta tarea' });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -652,16 +731,8 @@ const actualizarEstado = async (req, res) => {
     });
     if (!existente) return res.status(404).json({ error: 'Tarea no encontrada' });
 
-    // Verificar permisos: ADMIN o miembro con visibilidad sobre esta tarea
-    if (esAdmin(req.usuario)) {
-      if (!puedeAdministrarProyecto(req.usuario, existente.proyecto)) {
-        return res.status(403).json({ error: 'No tienes permiso para actualizar esta tarea' });
-      }
-    } else {
-      const esMiembro = existente.proyecto.miembros.some(m => m.id === req.usuario.id);
-      if (!esMiembro || !puedeAccederTarea(existente, req.usuario.id)) {
-        return res.status(403).json({ error: 'No tienes permiso para actualizar esta tarea' });
-      }
+    if (!puedeTrabajarTarea(req.usuario, existente)) {
+      return res.status(403).json({ error: 'No tienes permiso para actualizar esta tarea' });
     }
 
     let tarea = await prisma.tarea.update({
@@ -702,4 +773,4 @@ const actualizarEstado = async (req, res) => {
   }
 };
 
-module.exports = { listar, crear, editar, eliminar, actualizarEstado };
+module.exports = { listar, listarPanel, crear, editar, eliminar, actualizarEstado };

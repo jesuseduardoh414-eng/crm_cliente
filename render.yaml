@@ -8,6 +8,11 @@
 
 services:
   - type: web
+    # NO renombrar: este nombre es la identidad del servicio ya desplegado y
+    # define su URL (crm-ferreteria-api.onrender.com). Cambiarlo no renombra
+    # nada: Render crea un servicio NUEVO, deja el viejo corriendo y cambia la
+    # URL, lo que rompe VITE_API_URL en Vercel. El nombre de marca vive en
+    # frontend/src/config/brand.js.
     name: crm-ferreteria-api
     runtime: node
     plan: free

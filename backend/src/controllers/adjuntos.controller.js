@@ -3,7 +3,7 @@ const { registrarActividad } = require('../utils/logger');
 const path = require('path');
 const fs = require('fs');
 const { put, del } = require('@vercel/blob');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 
 // Detecta si una "url" guardada es una URL absoluta de Vercel Blob
 // (los adjuntos antiguos guardaban solo el nombre de archivo en disco).
@@ -78,13 +78,13 @@ const listar = async (req, res) => {
         include: { proyecto: { select: { area: true } } },
       });
       if (!tarea) return res.status(404).json({ error: 'Tarea no encontrada' });
-      if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, tarea.proyecto)) {
+      if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, tarea.proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para ver adjuntos de esta tarea' });
       }
     } else if (entityType === 'proyectos') {
       const proyecto = await prisma.proyecto.findUnique({ where: { id: Number(parentId) } });
       if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
-      if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
+      if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para ver adjuntos de este proyecto' });
       }
     } else {
@@ -137,7 +137,7 @@ const subir = async (req, res) => {
       tituloRef = `la tarea "${tarea.titulo}"`;
       createBase = { tareaId: Number(parentId), proyectoId: null, eventoId: null };
 
-      if (esAdmin(req.usuario)) {
+      if (puedeAdministrar(req.usuario)) {
         const proyecto = await prisma.proyecto.findUnique({ where: { id: tarea.proyectoId } });
         if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
           return res.status(403).json({ error: 'No tienes permiso para subir archivos a esta tarea' });
@@ -154,7 +154,7 @@ const subir = async (req, res) => {
       tituloRef = `el proyecto "${proyecto.nombre}"`;
       createBase = { proyectoId: Number(parentId), tareaId: null, eventoId: null };
 
-      if (esAdmin(req.usuario)) {
+      if (puedeAdministrar(req.usuario)) {
         if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
           return res.status(403).json({ error: 'No tienes permiso para subir archivos a este proyecto' });
         }
@@ -259,7 +259,7 @@ const eliminar = async (req, res) => {
       });
     }
 
-    const adminPuedeBorrar = esAdmin(req.usuario) && proyectoScope && puedeAdministrarProyecto(req.usuario, proyectoScope);
+    const adminPuedeBorrar = puedeAdministrar(req.usuario) && proyectoScope && puedeAdministrarProyecto(req.usuario, proyectoScope);
     const puedeBorrarEvento = adjunto.evento && canManageEvento(adjunto.evento, req.usuario.id);
 
     if (adjunto.usuarioId !== req.usuario.id && !adminPuedeBorrar && !puedeBorrarEvento) {

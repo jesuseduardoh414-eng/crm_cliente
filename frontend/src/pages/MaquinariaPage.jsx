@@ -16,6 +16,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { puedeAdministrar } from '../utils/roles';
 import { useToast } from '../context/ToastContext';
 import { maquinasService } from '../services/api';
 import { PageSkeleton } from '../components/Skeleton';
@@ -358,8 +359,8 @@ const MaquinariaPage = () => {
     return () => clearTimeout(id);
   }, [cargar]);
 
-  // Refleja la misma regla del backend: el permiso es del dueño, no del rol.
-  const puedeEditar = (m) => usuario?.rol === 'ADMIN' || m.propietarioId === usuario?.id;
+  // Refleja la misma regla del backend: el permiso es del dueño, o la mesa.
+  const puedeEditar = (m) => puedeAdministrar(usuario) || m.propietarioId === usuario?.id;
 
   const eliminar = async (maquina) => {
     if (!window.confirm(`¿Eliminar "${maquina.nombre}"? Esta acción no se puede deshacer.`)) return;

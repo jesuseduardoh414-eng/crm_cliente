@@ -5,7 +5,7 @@ const crypto  = require('crypto');
 const { validarPassword } = require('../utils/security.utils');
 const { sendResetEmail, sendVerificationEmail } = require('../services/email.service');
 const { enviarInvitacion } = require('../services/correo');
-const { buildScopeProyectoParaAdmin, puedeGestionarArea, esAdminDeArea, esRolValido, normalizarRol, ROLES } = require('../utils/permissions.utils');
+const { buildScopeProyectoVisible, puedeGestionarArea, administraUnArea, esRolValido, normalizarRol, ROLES } = require('../utils/permissions.utils');
 
 const usuarioAuthSelect = {
   id: true,
@@ -258,7 +258,7 @@ const invitar = async (req, res) => {
       return res.status(409).json({ error: 'El email ya está registrado' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, area)) {
       return res.status(403).json({ error: 'Solo puedes invitar usuarios de tu propia área' });
     }
 
@@ -384,19 +384,9 @@ const aceptarInvitacion = async (req, res) => {
       }
     });
 
-    // Un OPERADOR sin PerfilOperador entra con el rol pero no sale en el
-    // listado de operadores: quedaria invisible para quien busca a quien
-    // asignar. Se le crea el perfil vacio y no disponible; el ya lo completa
-    // y se marca libre cuando toque.
-    if (rolFinal === 'OPERADOR') {
-      await prisma.perfilOperador.create({
-        data: {
-          usuarioId: nuevoUsuario.id,
-          especialidad: 'Por definir',
-          disponible: false,
-        },
-      });
-    }
+    // El catalogo de operadores ya no depende de las cuentas: son fichas que
+    // cualquier miembro da de alta, asi que aceptar una invitacion no crea
+    // ninguna. El rol solo dice que puede hacer dentro del panel.
 
     // Marcar invitación como aceptada
     await prisma.invitacion.update({
@@ -440,7 +430,7 @@ const reenviarInvitacion = async (req, res) => {
       where: {
         email: email.toLowerCase().trim(),
         estado: { not: 'aceptada' },
-        ...(esAdminDeArea(req.usuario) ? { area: req.usuario.area } : {})
+        ...(administraUnArea(req.usuario) ? { area: req.usuario.area } : {})
       }
     });
 
@@ -471,7 +461,7 @@ const reenviarInvitacion = async (req, res) => {
 const listarInvitaciones = async (req, res) => {
   try {
     const invitaciones = await prisma.invitacion.findMany({
-      where: esAdminDeArea(req.usuario) ? { area: req.usuario.area } : undefined,
+      where: administraUnArea(req.usuario) ? { area: req.usuario.area } : undefined,
       orderBy: { creadoEn: 'desc' },
       include: { creador: { select: { nombre: true } } }
     });
@@ -491,7 +481,7 @@ const eliminarInvitacion = async (req, res) => {
       return res.status(404).json({ error: 'Invitación no encontrada' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, invitacion.area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, invitacion.area)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar esta invitación' });
     }
 

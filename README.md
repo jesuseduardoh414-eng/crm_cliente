@@ -1,4 +1,6 @@
-# CRM - Deploy en Vercel
+# FEMIC Maquinaria - Panel interno
+
+Panel interno de FEMIC Maquinaria (renta de maquinaria con operadores).
 
 Este repositorio esta organizado como monorepo con dos proyectos separados:
 

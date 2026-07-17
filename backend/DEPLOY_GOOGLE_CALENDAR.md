@@ -47,7 +47,7 @@ No hace falta agregar uno extra para este flujo porque el frontend usa `Google I
 
 1. Redeploy del backend.
 2. Redeploy del frontend.
-3. Entra al CRM.
+3. Entra al panel.
 4. Abre Configuración de Agenda.
 5. Conecta Google Calendar.
 

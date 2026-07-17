@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adjuntosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { puedeAdministrar } from '../utils/roles';
 import {
   Archive,
   Eye,
@@ -355,7 +356,7 @@ const TaskAttachments = ({
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.85rem' }}>
           {allItems.map((item) => {
-            const canDelete = item.isPending || item.usuarioId === usuario?.id || usuario?.rol === 'ADMIN';
+            const canDelete = item.isPending || item.usuarioId === usuario?.id || puedeAdministrar(usuario);
             return (
               <PreviewCard
                 key={item.id || item.url}

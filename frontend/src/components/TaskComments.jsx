@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { comentariosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { puedeAdministrar } from '../utils/roles';
 import { MessageSquare, Trash2, Send } from 'lucide-react';
 import { PanelSkeleton } from './Skeleton';
 
@@ -144,7 +145,7 @@ const TaskComments = ({ tareaId, type = 'tareas', onCommentsChange }) => {
                     {c.contenido}
                     
                     {/* Botón eliminar flotante */}
-                    {(esMio || usuario.rol === 'ADMIN') && (
+                    {(esMio || puedeAdministrar(usuario)) && (
                       <button
                         onClick={() => handleEliminar(c.id)}
                         style={{ 

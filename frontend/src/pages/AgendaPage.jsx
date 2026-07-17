@@ -23,6 +23,7 @@ import {
 import { agendaService, tareasService } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { veTodo } from '../utils/roles';
 import { usePreferences } from '../context/PreferencesContext';
 import ModalEvento from '../components/ModalEvento';
 import ModalConfiguracionAgenda from '../components/ModalConfiguracionAgenda';
@@ -429,7 +430,8 @@ const AgendaPage = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [agendaFilterType, setAgendaFilterType] = useState('todo');
   const [agendaProjectFilter, setAgendaProjectFilter] = useState('todos');
-  const ocultarBloquesProyecto = usuario?.rol === 'ADMIN';
+  // Consejo y mesa ven la agenda de conjunto y no necesitan los bloques de obra.
+  const ocultarBloquesProyecto = veTodo(usuario);
   const agendaProjectOptions = useMemo(() => {
     const projects = new Map();
 

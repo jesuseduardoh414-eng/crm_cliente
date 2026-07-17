@@ -1,4 +1,4 @@
-// Imagenes de maquinas y publicaciones.
+// Imagenes de maquinas, publicaciones y fichas de operador.
 //
 // Reutiliza el modelo Adjunto y Vercel Blob, igual que los adjuntos de tareas y
 // proyectos. Va en su propio controlador y no dentro de adjuntos.controller
@@ -8,7 +8,7 @@
 
 const prisma = require('../lib/prisma');
 const { guardarArchivo, borrarArchivo } = require('../services/storage.service');
-const { esAdmin } = require('../utils/permissions.utils');
+const { puedeAdministrar } = require('../utils/permissions.utils');
 
 const MAX_IMAGENES = 8;
 const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
@@ -20,28 +20,46 @@ const getFiles = (req) => {
   return [];
 };
 
-// Devuelve { entidad, campo } segun la ruta desde la que se llama.
-const resolverEntidad = (req) =>
-  req.baseUrl.includes('publicaciones')
-    ? { entidad: 'publicacion', campo: 'publicacionId' }
-    : { entidad: 'maquina', campo: 'maquinaId' };
+// Cada entidad que tiene galeria: de que tabla se carga, en que columna de
+// Adjunto cuelga, y quien es su dueño.
+const ENTIDADES = {
+  publicaciones: {
+    entidad: 'publicacion',
+    campo: 'publicacionId',
+    cargar: (id) => prisma.publicacion.findUnique({ where: { id } }),
+    duenoId: (padre) => padre.autorId,
+  },
+  operadores: {
+    entidad: 'operador',
+    campo: 'operadorId',
+    cargar: (id) => prisma.operador.findUnique({ where: { id } }),
+    duenoId: (padre) => padre.registradoPorId,
+  },
+  maquinas: {
+    entidad: 'maquina',
+    campo: 'maquinaId',
+    cargar: (id) => prisma.maquina.findUnique({ where: { id } }),
+    duenoId: (padre) => padre.propietarioId,
+  },
+};
 
-const cargarPadre = async (entidad, id) =>
-  entidad === 'publicacion'
-    ? prisma.publicacion.findUnique({ where: { id } })
-    : prisma.maquina.findUnique({ where: { id } });
+// Devuelve la config de la entidad segun la ruta desde la que se llama.
+const resolverEntidad = (req) => {
+  const clave = Object.keys(ENTIDADES).find((k) => req.baseUrl.includes(k));
+  return ENTIDADES[clave] || ENTIDADES.maquinas;
+};
 
-// El dueño de la maquina es propietarioId; el de la publicacion, autorId.
-const esDueno = (entidad, padre, usuario) =>
-  esAdmin(usuario) || (entidad === 'publicacion' ? padre.autorId : padre.propietarioId) === usuario.id;
+const esDueno = (config, padre, usuario) =>
+  puedeAdministrar(usuario) || config.duenoId(padre) === usuario.id;
 
 const listar = async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Id inválido' });
 
-    const { entidad, campo } = resolverEntidad(req);
-    const padre = await cargarPadre(entidad, id);
+    const config = resolverEntidad(req);
+    const { campo } = config;
+    const padre = await config.cargar(id);
     if (!padre) return res.status(404).json({ error: 'No encontrado' });
 
     const imagenes = await prisma.adjunto.findMany({
@@ -62,11 +80,12 @@ const subir = async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Id inválido' });
 
-    const { entidad, campo } = resolverEntidad(req);
-    const padre = await cargarPadre(entidad, id);
+    const config = resolverEntidad(req);
+    const { entidad, campo } = config;
+    const padre = await config.cargar(id);
     if (!padre) return res.status(404).json({ error: 'No encontrado' });
 
-    if (!esDueno(entidad, padre, req.usuario)) {
+    if (!esDueno(config, padre, req.usuario)) {
       return res.status(403).json({ error: 'Solo el propietario puede subir imágenes' });
     }
 
@@ -127,12 +146,12 @@ const eliminar = async (req, res) => {
     const imagen = await prisma.adjunto.findUnique({ where: { id } });
     if (!imagen) return res.status(404).json({ error: 'Imagen no encontrada' });
 
-    const { entidad, campo } = resolverEntidad(req);
-    const padreId = imagen[campo];
+    const config = resolverEntidad(req);
+    const padreId = imagen[config.campo];
     if (!padreId) return res.status(404).json({ error: 'Imagen no encontrada' });
 
-    const padre = await cargarPadre(entidad, padreId);
-    if (!padre || !esDueno(entidad, padre, req.usuario)) {
+    const padre = await config.cargar(padreId);
+    if (!padre || !esDueno(config, padre, req.usuario)) {
       return res.status(403).json({ error: 'Solo el propietario puede eliminar imágenes' });
     }
 
@@ -153,11 +172,12 @@ const reordenar = async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Id inválido' });
 
-    const { entidad, campo } = resolverEntidad(req);
-    const padre = await cargarPadre(entidad, id);
+    const config = resolverEntidad(req);
+    const { campo } = config;
+    const padre = await config.cargar(id);
     if (!padre) return res.status(404).json({ error: 'No encontrado' });
 
-    if (!esDueno(entidad, padre, req.usuario)) {
+    if (!esDueno(config, padre, req.usuario)) {
       return res.status(403).json({ error: 'Solo el propietario puede reordenar' });
     }
 

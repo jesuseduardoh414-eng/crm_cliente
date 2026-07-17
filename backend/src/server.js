@@ -66,7 +66,7 @@ app.use('/api/publicaciones',               publicacionesRoutes);
 
 // Ruta de salud para verificar que el servidor está corriendo
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, mensaje: 'Servidor CRM funcionando' });
+  res.json({ ok: true, mensaje: 'Servidor FEMIC funcionando' });
 });
 
 app.use((err, _req, res, _next) => {
@@ -99,7 +99,7 @@ const esServerless = Boolean(process.env.VERCEL);
 
 if (!esServerless) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Servidor CRM corriendo en el puerto ${PORT}`);
+    console.log(`✅ Servidor FEMIC corriendo en el puerto ${PORT}`);
   });
 }
 

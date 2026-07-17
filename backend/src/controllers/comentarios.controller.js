@@ -1,6 +1,6 @@
 const prisma = require('../lib/prisma');
 const { registrarActividad } = require('../utils/logger');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 
 const listar = async (req, res) => {
   const { id: parentId } = req.params;
@@ -13,13 +13,13 @@ const listar = async (req, res) => {
         include: { proyecto: { select: { area: true } } }
       });
       if (!tarea) return res.status(404).json({ error: 'Tarea no encontrada' });
-      if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, tarea.proyecto)) {
+      if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, tarea.proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para ver comentarios de esta tarea' });
       }
     } else {
       const proyecto = await prisma.proyecto.findUnique({ where: { id: Number(parentId) } });
       if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
-      if (esAdmin(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
+      if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
         return res.status(403).json({ error: 'No tienes permiso para ver comentarios de este proyecto' });
       }
     }
@@ -59,7 +59,7 @@ const crear = async (req, res) => {
       tituloRef = `la tarea "${tarea.titulo}"`;
 
       // Si es MIEMBRO, verificar que pertenece a la lista de miembros del proyecto
-      if (esAdmin(req.usuario)) {
+      if (puedeAdministrar(req.usuario)) {
         const proyecto = await prisma.proyecto.findUnique({ where: { id: proyectoId } });
         if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
           return res.status(403).json({ error: 'No tienes permiso para comentar en este proyecto' });
@@ -89,7 +89,7 @@ const crear = async (req, res) => {
       tituloRef = `el proyecto "${proyecto.nombre}"`;
 
       // Si es MIEMBRO, verificar que pertenece a la lista de miembros del proyecto
-      if (esAdmin(req.usuario)) {
+      if (puedeAdministrar(req.usuario)) {
         if (!puedeAdministrarProyecto(req.usuario, proyecto)) {
           return res.status(403).json({ error: 'No tienes permiso para comentar en este proyecto' });
         }
@@ -151,7 +151,7 @@ const eliminar = async (req, res) => {
       });
     }
 
-    const adminPuedeBorrar = esAdmin(req.usuario) && proyectoScope && puedeAdministrarProyecto(req.usuario, proyectoScope);
+    const adminPuedeBorrar = puedeAdministrar(req.usuario) && proyectoScope && puedeAdministrarProyecto(req.usuario, proyectoScope);
 
     // Solo el autor o un ADMIN con alcance pueden borrarlo
     if (comentario.autorId !== req.usuario.id && !adminPuedeBorrar) {

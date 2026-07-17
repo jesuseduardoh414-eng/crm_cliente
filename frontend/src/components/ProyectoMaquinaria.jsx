@@ -18,7 +18,10 @@ import {
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { maquinasService, proyectosService } from '../services/api';
-import UserAvatar from './UserAvatar';
+
+const iniciales = (nombre = '') => nombre
+  .split(' ').filter(Boolean).slice(0, 2)
+  .map((p) => p.charAt(0).toUpperCase()).join('') || '?';
 
 const fechaCorta = (iso) =>
   iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : null;
@@ -133,8 +136,8 @@ const ModalAsignar = ({ proyectoId, asignacion, maquinas, operadores, yaAsignada
                   <option value="">Sin operador asignado todavía</option>
                   {operadores.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {o.nombre} — {o.perfilOperador?.especialidad || 'Sin especialidad'}
-                      {o.perfilOperador?.disponible === false ? ' (ocupado)' : ''}
+                      {o.nombre} — {o.especialidad}
+                      {o.disponible === false ? ' (ocupado)' : ''}
                     </option>
                   ))}
                 </select>
@@ -213,10 +216,16 @@ const AsignacionCard = ({ asignacion, puedeGestionar, onEditar, onRetirar }) => 
         <div className="mt-2.5">
           {operador ? (
             <div className="flex items-center gap-2">
-              <UserAvatar usuario={operador} size={22} radius={999} fontSize="0.55rem" />
+              {/* La ficha del operador no es una cuenta: su foto sale de sus
+                  adjuntos, no de un perfil de usuario. */}
+              {operador.adjuntos?.[0]
+                ? <img src={operador.adjuntos[0].url} alt={operador.nombre} className="w-[22px] h-[22px] rounded-full object-cover shrink-0" />
+                : <span className="w-[22px] h-[22px] rounded-full bg-brand-100 text-brand-700 text-[0.55rem] font-black flex items-center justify-center shrink-0">
+                    {iniciales(operador.nombre)}
+                  </span>}
               <span className="text-[11px] font-black text-[var(--color-text)]">{operador.nombre}</span>
               <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
-                {operador.perfilOperador?.especialidad}
+                {operador.especialidad}
               </span>
             </div>
           ) : (

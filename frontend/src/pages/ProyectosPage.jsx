@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { puedeAdministrar, veTodo, administraUnArea } from '../utils/roles';
 import { useToast } from '../context/ToastContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { agendaService, proyectosService, usuariosService } from '../services/api';
@@ -68,7 +69,9 @@ const formatFechaCorta = (fecha, locale, t) => {
   return new Date(fecha).toLocaleDateString(locale, { day: '2-digit', month: 'short' });
 };
 
-const esAdminUsuario = (usuario) => usuario?.rol?.toString().toUpperCase() === 'ADMIN';
+// Roles transversales: no pertenecen a un área, se muestran siempre en el
+// selector de miembros. Consejo y mesa directiva.
+const esRolTransversal = (usuario) => veTodo(usuario);
 
 const dateKey = (date) => {
   const d = new Date(date);
@@ -313,7 +316,7 @@ const ProyectoCard = ({ proyecto, onEditar, onEliminar, onVerDetalle, esAdmin })
 const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
   const { t, locale } = usePreferences();
   const { usuario: usuarioActual } = useAuth();
-  const esAdminArea = usuarioActual?.rol === 'ADMIN' && usuarioActual?.area !== 'ADMINISTRACION';
+  const esAdminArea = administraUnArea(usuarioActual);
   const areasIniciales = proyecto?.area ? getAreasProyecto(proyecto.area) : [usuarioActual?.area || 'VENTAS'];
   const [form, setForm] = useState({
     nombre: proyecto?.nombre || '',
@@ -352,17 +355,17 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
   const usuariosSeleccionables = usuarios.filter(u => u.id !== usuarioActual?.id);
   const usuariosEnAreas = esAdminArea
     ? usuariosSeleccionables
-    : usuariosSeleccionables.filter(u => form.areas.includes(u.area) || esAdminUsuario(u));
-  const admins = usuariosSeleccionables.filter(esAdminUsuario);
+    : usuariosSeleccionables.filter(u => form.areas.includes(u.area) || esRolTransversal(u));
+  const admins = usuariosSeleccionables.filter(esRolTransversal);
   const usuariosPorArea = [
     ...(esAdminArea ? Object.keys(AREA_CONF) : form.areas).map(area => ({
       area,
-      usuarios: usuariosEnAreas.filter(u => u.area === area && !esAdminUsuario(u)),
+      usuarios: usuariosEnAreas.filter(u => u.area === area && !esRolTransversal(u)),
     })),
-    ...(admins.length > 0 ? [{ area: 'ADMIN', usuarios: admins }] : []),
+    ...(admins.length > 0 ? [{ area: 'DIRECCION', usuarios: admins }] : []),
   ];
   const conflictosEnAreas = usuariosEnAreas
-    .filter(u => !esAdminUsuario(u))
+    .filter(u => !esRolTransversal(u))
     .flatMap(u => (ocupados[u.id] || []).map(conflicto => ({ ...conflicto, usuario: u })))
     .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
   const usuariosParaBloqueo = usuariosEnAreas.filter(u =>
@@ -370,7 +373,7 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
   );
   const fechasBloqueadas = expandBlockedDates(
     usuariosParaBloqueo
-      .filter(u => !esAdminUsuario(u))
+      .filter(u => !esRolTransversal(u))
       .flatMap(u => (ocupados[u.id] || []).map(conflicto => ({ ...conflicto, usuario: u })))
   );
 
@@ -416,7 +419,7 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
     setForm(prev => {
       const exists = prev.areas.includes(area);
       const areas = exists ? prev.areas.filter(a => a !== area) : [...prev.areas, area];
-      const miembrosPermitidos = usuariosSeleccionables.filter(u => areas.includes(u.area) || esAdminUsuario(u)).map(u => u.id);
+      const miembrosPermitidos = usuariosSeleccionables.filter(u => areas.includes(u.area) || esRolTransversal(u)).map(u => u.id);
       return {
         ...prev,
         areas,
@@ -627,7 +630,7 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
                 {usuariosPorArea.map(grupo => (
                   <div key={grupo.area} className="p-4 bg-brand-50/30 rounded-2xl border border-brand-100/50">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                      {grupo.area === 'ADMIN' ? t('projectAdmins') : t(AREA_CONF[grupo.area]?.labelKey || 'areaGeneral')}
+                      {grupo.area === 'DIRECCION' ? t('projectAdmins') : t(AREA_CONF[grupo.area]?.labelKey || 'areaGeneral')}
                     </p>
                     <div className="flex flex-wrap gap-2 min-h-[36px]">
                       {grupo.usuarios.length === 0 && (
@@ -635,7 +638,7 @@ const ModalProyecto = ({ proyecto, onClose, onGuardar }) => {
                       )}
                       {grupo.usuarios.map(u => {
                         const isSelected = form.miembrosIds.includes(u.id);
-                        const conflictos = esAdminUsuario(u) ? [] : ocupados[u.id] || [];
+                        const conflictos = esRolTransversal(u) ? [] : ocupados[u.id] || [];
                         const tieneProyectoActivo = conflictos.some(c => c.tipo === 'proyecto');
                         return (
                           <button
@@ -912,7 +915,7 @@ const ProyectosPage = () => {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const esAdmin = usuario?.rol?.toUpperCase() === 'ADMIN';
+  const esAdmin = puedeAdministrar(usuario);
 
   const [proyectos, setProyectos] = useState([]);
   const [cargando, setCargando] = useState(true);

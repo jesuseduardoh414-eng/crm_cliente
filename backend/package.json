@@ -1,7 +1,7 @@
 {
-  "name": "crm-backend",
+  "name": "femic-backend",
   "version": "1.0.0",
-  "description": "API REST del CRM interno",
+  "description": "API REST del panel interno de FEMIC Maquinaria",
   "main": "src/server.js",
   "engines": {
     "node": "20.x"

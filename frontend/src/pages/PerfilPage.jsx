@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PageSkeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
+import { etiquetaRol } from '../utils/roles';
 import { useToast } from '../context/ToastContext';
 import { getPublicAssetUrl, usuariosService } from '../services/api';
 import { usePreferences } from '../context/PreferencesContext';
@@ -188,11 +189,11 @@ const PerfilPage = () => {
               </div>
               <h1 className="text-3xl font-black tracking-tight text-slate-900 lg:text-4xl">{perfil.nombre}</h1>
               <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500">
-                Administra tu información personal, tu foto de perfil y el contexto de trabajo que te acompaña dentro del CRM.
+                Administra tu información personal, tu foto de perfil y el contexto de trabajo que te acompaña dentro del panel.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                  {t(perfil.rol === 'ADMIN' ? 'roleAdmin' : 'roleMember')}
+                  {etiquetaRol(perfil.rol)}
                 </span>
                 <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
                   {t(AREAS_KEY[perfil.area] || 'areaGeneral')}
@@ -328,7 +329,7 @@ const PerfilPage = () => {
 
           <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs font-medium text-slate-400">
-              Tu avatar, nombre y correo se reflejan en el layout y en el resto del CRM.
+              Tu avatar, nombre y correo se reflejan en el layout y en el resto del panel.
             </p>
             <button
               type="submit"
@@ -347,7 +348,7 @@ const PerfilPage = () => {
             <div className="mt-5 space-y-4">
               {[
                 { label: t('fieldArea'),           value: t(AREAS_KEY[perfil.area] || 'areaGeneral'), icon: <Building2 size={16} /> },
-                { label: t('fieldRole'),           value: t(perfil.rol === 'ADMIN' ? 'roleAdmin' : 'roleMember'), icon: <ShieldCheck size={16} /> },
+                { label: t('fieldRole'),           value: etiquetaRol(perfil.rol), icon: <ShieldCheck size={16} /> },
                 { label: t('fieldRegistration'),   value: formatDate(perfil.creadoEn), icon: <BadgeCheck size={16} /> },
                 { label: t('fieldGoogleCalendar'), value: perfil.googleCalendarEmail || t('fieldNotConnected'), icon: <Mail size={16} /> },
               ].map((item) => (

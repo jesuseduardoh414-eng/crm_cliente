@@ -21,7 +21,7 @@ model Usuario {
   biografia                String?
   fotoPerfilUrl            String?        @map("foto_perfil_url")
   area                     Area
-  rol                      Rol            @default(MIEMBRO)
+  rol                      Rol            @default(FEDERACION)
   creadoEn                 DateTime       @default(now())
   resetToken               String?
   resetTokenExpires        DateTime?
@@ -52,11 +52,13 @@ model Usuario {
   tareasCompartidas        Tarea[]        @relation("AsignadosMultiplesTarea")
   proyectosMiembro         Proyecto[]     @relation("ProyectoMiembro")
   invitacionesEnviadas     Invitacion[]   @relation("CreadorInvitacion")
-  perfilOperador           PerfilOperador?
   maquinas                 Maquina[]      @relation("MaquinasPropias")
   publicaciones            Publicacion[]  @relation("PublicacionesPropias")
-  // Obras donde este usuario opera maquinaria.
-  asignacionesComoOperador AsignacionMaquina[] @relation("OperadorAsignado")
+  // Fichas de operador que este usuario dio de alta.
+  operadoresRegistrados    Operador[]     @relation("OperadoresRegistrados")
+  calificacionesEmitidas   CalificacionOperador[] @relation("AutorCalificacion")
+  reportesEmitidos         ReporteOperador[] @relation("AutorReporte")
+  reportesRevisados        ReporteOperador[] @relation("RevisorReporte")
   asignacionesCreadas      AsignacionMaquina[] @relation("AsignacionesCreadas")
 
   @@map("usuarios")
@@ -67,7 +69,9 @@ model Invitacion {
   email     String
   nombre    String
   area      String
-  rol       String   @default("miembro")
+  // En minusculas y no el enum Rol: la invitacion viaja por correo antes de que
+  // exista el usuario, y se guarda tal como la escribio quien invita.
+  rol       String   @default("federacion")
   token     String   @unique
   estado    String   @default("pendiente")
   creadoPor Int?     @map("creado_por")
@@ -145,7 +149,9 @@ model Tarea {
   creadoEn    DateTime     @default(now())
   completadoEn DateTime?
   venceEn     DateTime?
-  proyectoId  Int
+  // Opcional: una tarea nacida del panel de noticias no pertenece a ninguna
+  // obra. Es trabajo del equipo, no de un proyecto concreto.
+  proyectoId  Int?
   asignadoId  Int?
   creadorId   Int?
   dependeDeId Int?
@@ -156,6 +162,11 @@ model Tarea {
   // SetNull y no Cascade: si se borra la maquina, la tarea sigue existiendo.
   maquinaId   Int?         @map("maquina_id")
   maquina     Maquina?     @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  // La noticia que dio origen a esta tarea. Una noticia genera una sola tarea:
+  // publicar "hay retro disponible" es el aviso y el pendiente a la vez.
+  // Cascade: si se borra la noticia, su tarea deja de tener sentido.
+  publicacionId Int?       @unique @map("publicacion_id")
+  publicacion Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
   fechaInicio DateTime     @default(now())
   adjuntos    Adjunto[]
   comentarios Comentario[]
@@ -165,7 +176,7 @@ model Tarea {
   creador     Usuario?     @relation("CreadorTarea", fields: [creadorId], references: [id])
   dependeDe   Tarea?       @relation("Dependencia", fields: [dependeDeId], references: [id])
   bloqueaA    Tarea[]      @relation("Dependencia")
-  proyecto    Proyecto     @relation(fields: [proyectoId], references: [id])
+  proyecto    Proyecto?    @relation(fields: [proyectoId], references: [id])
   notificaciones Notificacion[]
 
   @@index([asignadoId])
@@ -215,9 +226,11 @@ model LogActividad {
   descripcion String
   creadoEn    DateTime @default(now())
   usuarioId   Int
-  proyectoId  Int
+  // Opcional desde que existen tareas sin obra: lo que se hace sobre una tarea
+  // del panel se registra igual, solo que no cuelga de ningun proyecto.
+  proyectoId  Int?
   tareaId     Int?
-  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto    Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   tarea       Tarea?    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
   usuario     Usuario  @relation("AutorActividad", fields: [usuarioId], references: [id])
 
@@ -239,6 +252,9 @@ model Adjunto {
   // sube a Vercel Blob. No hacia falta una tabla de imagenes aparte.
   maquinaId     Int?   @map("maquina_id")
   publicacionId Int?   @map("publicacion_id")
+  // La foto de la ficha del operador. Misma via que las de maquina: ya sube a
+  // Vercel Blob y no hacia falta otra tabla.
+  operadorId    Int?   @map("operador_id")
   // Ordena la galeria de una maquina; la primera hace de portada.
   orden      Int       @default(0)
   proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
@@ -246,34 +262,95 @@ model Adjunto {
   evento     Evento?   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
   maquina    Maquina?     @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
   publicacion Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  operador   Operador? @relation(fields: [operadorId], references: [id], onDelete: Cascade)
   usuario    Usuario   @relation("AutorAdjunto", fields: [usuarioId], references: [id])
 
   @@index([maquinaId])
   @@index([publicacionId])
+  @@index([operadorId])
   @@map("adjuntos")
 }
 
-// Datos propios de un Usuario con rol OPERADOR.
-// Es una tabla aparte y no campos sueltos en Usuario porque solo aplican a los
-// operadores: meterlos en Usuario dejaria media docena de columnas nulas en
-// todas las demas cuentas.
-model PerfilOperador {
+// Ficha de un operador: la persona que maneja la maquinaria.
+//
+// No es una cuenta. Cualquier miembro da de alta al operador que conoce, igual
+// que da de alta una maquina, y el resto del equipo lo califica y lo reporta.
+// Atarlo a un Usuario obligaria a invitar y crear cuenta a gente que no usa el
+// panel, y dejaria fuera justo a los que hay que poder recomendar.
+model Operador {
   id               Int      @id @default(autoincrement())
-  usuarioId        Int      @unique @map("usuario_id")
-  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nombre           String
   especialidad     String
   descripcion      String?
-  // Lo marca el propio operador; es lo que filtra el listado de disponibles.
-  disponible       Boolean  @default(false)
+  disponible       Boolean  @default(true)
   zona             String?
   telefonoContacto String?  @map("telefono_contacto")
   tarifaHora       Decimal? @map("tarifa_hora") @db.Decimal(10, 2)
   experienciaAnios Int?     @map("experiencia_anios")
+  // Quien lo dio de alta. Responde por la ficha y es quien puede editarla: el
+  // permiso no puede salir del rol porque cualquier miembro puede subir uno.
+  registradoPorId  Int      @map("registrado_por_id")
+  registradoPor    Usuario  @relation("OperadoresRegistrados", fields: [registradoPorId], references: [id], onDelete: Cascade)
   creadoEn         DateTime @default(now()) @map("creado_en")
   actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  adjuntos         Adjunto[]
+  calificaciones   CalificacionOperador[]
+  reportes         ReporteOperador[]
+  publicaciones    Publicacion[]
+  // Obras donde este operador trabaja.
+  asignaciones     AsignacionMaquina[]
 
   @@index([disponible])
-  @@map("perfiles_operador")
+  @@index([registradoPorId])
+  @@map("operadores")
+}
+
+// Lo que un miembro opina de un operador con el que ya trabajo.
+//
+// La nota y el "lo recomiendo" van juntas y no en tablas distintas: son la
+// misma opinion, y separarlas permitiria recomendar a quien acabas de puntuar
+// con un 1.
+model CalificacionOperador {
+  id           Int      @id @default(autoincrement())
+  operadorId   Int      @map("operador_id")
+  operador     Operador @relation(fields: [operadorId], references: [id], onDelete: Cascade)
+  autorId      Int      @map("autor_id")
+  autor        Usuario  @relation("AutorCalificacion", fields: [autorId], references: [id], onDelete: Cascade)
+  // 1 a 5. Lo valida el controlador: Postgres no tiene un tipo para rangos.
+  puntuacion   Int
+  recomendable Boolean
+  comentario   String?
+  creadoEn     DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+
+  // Un miembro, una opinion por operador: si cambia de idea, la edita. Sin
+  // esto, el promedio lo decide quien mas veces vote.
+  @@unique([operadorId, autorId])
+  @@index([operadorId])
+  @@map("calificaciones_operador")
+}
+
+// Observaciones y reportes sobre un operador.
+//
+// Van en la misma tabla porque son el mismo gesto —dejar constancia de algo—
+// y solo cambia la gravedad. Separarlos duplicaria listado, permisos y avisos.
+model ReporteOperador {
+  id            Int           @id @default(autoincrement())
+  operadorId    Int           @map("operador_id")
+  operador      Operador      @relation(fields: [operadorId], references: [id], onDelete: Cascade)
+  autorId       Int           @map("autor_id")
+  autor         Usuario       @relation("AutorReporte", fields: [autorId], references: [id], onDelete: Cascade)
+  tipo          TipoReporte   @default(OBSERVACION)
+  contenido     String
+  estado        EstadoReporte @default(ABIERTO)
+  creadoEn      DateTime      @default(now()) @map("creado_en")
+  revisadoPorId Int?          @map("revisado_por_id")
+  revisadoPor   Usuario?      @relation("RevisorReporte", fields: [revisadoPorId], references: [id], onDelete: SetNull)
+  revisadoEn    DateTime?     @map("revisado_en")
+
+  @@index([operadorId, tipo])
+  @@index([estado])
+  @@map("reportes_operador")
 }
 
 // Una maquina que su dueño ofrece en renta.
@@ -325,7 +402,7 @@ model AsignacionMaquina {
   // Opcional: se puede asignar la maquina a la obra antes de saber quien la
   // operara. SetNull para que dar de baja al operador no borre la asignacion.
   operadorId  Int?      @map("operador_id")
-  operador    Usuario?  @relation("OperadorAsignado", fields: [operadorId], references: [id], onDelete: SetNull)
+  operador    Operador? @relation(fields: [operadorId], references: [id], onDelete: SetNull)
   fechaInicio DateTime? @map("fecha_inicio")
   fechaFin    DateTime? @map("fecha_fin")
   notas       String?
@@ -341,8 +418,12 @@ model AsignacionMaquina {
   @@map("asignaciones_maquina")
 }
 
-// Entrada del panel de noticias: alguien anuncia una maquina, se ofrece como
-// operador o publica un aviso.
+// Entrada del panel de noticias: alguien anuncia una maquina disponible, un
+// operador libre, convoca una reunion o publica un aviso.
+//
+// Una noticia no es solo un texto que se lee: al publicarse genera la tarea que
+// le da seguimiento, y si es una reunion, tambien el evento del calendario.
+// Esas dos son sus relaciones con el resto del panel.
 model Publicacion {
   id          Int             @id @default(autoincrement())
   titulo      String
@@ -354,12 +435,22 @@ model Publicacion {
   autor       Usuario         @relation("PublicacionesPropias", fields: [autorId], references: [id], onDelete: Cascade)
   maquinaId   Int?            @map("maquina_id")
   maquina     Maquina?        @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  // El operador que anuncia una noticia de tipo OPERADOR_DISPONIBLE.
+  operadorId  Int?            @map("operador_id")
+  operador    Operador?       @relation(fields: [operadorId], references: [id], onDelete: SetNull)
+  // La reunion convocada por esta noticia. SetNull: borrar la noticia no debe
+  // borrar del calendario una reunion a la que ya fue gente.
+  eventoId    String?         @unique @map("evento_id") @db.Uuid
+  evento      Evento?         @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  // El pendiente que abre esta noticia. La crea el backend al publicarla.
+  tarea       Tarea?
   creadoEn    DateTime        @default(now()) @map("creado_en")
   actualizadoEn DateTime      @updatedAt @map("actualizado_en")
   adjuntos    Adjunto[]
 
   @@index([estado, visibilidad, creadoEn])
   @@index([autorId])
+  @@index([operadorId])
   @@map("publicaciones")
 }
 
@@ -392,6 +483,8 @@ model Evento {
   invitados         EventoInvitado[]
   adjuntos          Adjunto[]
   notificaciones    Notificacion[]
+  // La noticia que convoco esta reunion, si vino del panel.
+  publicacion       Publicacion?
 
   // Recurrencia
   esRecurrente      Boolean   @default(false) @map("es_recurrente")
@@ -451,10 +544,15 @@ enum Area {
   TALLER
 }
 
+// Los tres organos de la federacion, de mayor a menor alcance.
+//
+// Es una escalera de visibilidad, no de poder: el CONSEJO esta arriba y ve
+// todo, pero quien administra —invita, modera, gestiona obras— es la
+// MESA_DIRECTIVA. El consejo supervisa; la mesa ejecuta.
 enum Rol {
-  ADMIN
-  MIEMBRO
-  OPERADOR
+  CONSEJO
+  MESA_DIRECTIVA
+  FEDERACION
 }
 
 // ── Dominio: maquinaria en renta y operadores ──────────────────────────────
@@ -476,5 +574,17 @@ enum Visibilidad {
 enum TipoPublicacion {
   MAQUINA_RENTA
   OPERADOR_DISPONIBLE
+  REUNION
   AVISO
+}
+
+enum TipoReporte {
+  OBSERVACION // una nota sobre el operador, sin acusacion
+  REPORTE     // una queja formal, que alguien deberia revisar
+}
+
+enum EstadoReporte {
+  ABIERTO
+  REVISADO
+  DESCARTADO
 }

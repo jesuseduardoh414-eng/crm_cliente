@@ -1,6 +1,6 @@
 const prisma = require('../lib/prisma');
 const { sortTareas } = require('../utils/sort.utils');
-const { buildScopeProyectoParaAdmin, esAdminDeArea } = require('../utils/permissions.utils');
+const { buildScopeProyectoVisible, administraUnArea } = require('../utils/permissions.utils');
 
 const finDelDia = (fecha) => {
   const d = new Date(fecha);
@@ -104,12 +104,12 @@ const getTopUsuariosProductividad = async (usuario) => {
   const semanasAnalizadas = 4;
   const inicioVentana = new Date(inicioSemanaActual);
   inicioVentana.setDate(inicioVentana.getDate() - ((semanasAnalizadas - 1) * 7));
-  const filtroAreaUsuarios = esAdminDeArea(usuario) ? { area: usuario.area } : {};
-  const scopeProyecto = buildScopeProyectoParaAdmin(usuario);
+  const filtroAreaUsuarios = administraUnArea(usuario) ? { area: usuario.area } : {};
+  const scopeProyecto = buildScopeProyectoVisible(usuario);
 
   const [miembros, tareasHechas] = await Promise.all([
     prisma.usuario.findMany({
-      where: { rol: 'MIEMBRO', ...filtroAreaUsuarios },
+      where: { rol: 'FEDERACION', ...filtroAreaUsuarios },
       orderBy: { nombre: 'asc' },
       select: { id: true, nombre: true, area: true }
     }),
@@ -162,12 +162,12 @@ const getActividadMiembros = async (usuario) => {
   const calendarioFin = new Date(ahora);
   calendarioFin.setMonth(calendarioFin.getMonth() + 12);
   calendarioFin.setHours(23, 59, 59, 999);
-  const filtroAreaUsuarios = esAdminDeArea(usuario) ? { area: usuario.area } : {};
-  const scopeProyecto = buildScopeProyectoParaAdmin(usuario);
+  const filtroAreaUsuarios = administraUnArea(usuario) ? { area: usuario.area } : {};
+  const scopeProyecto = buildScopeProyectoVisible(usuario);
   const projectScopeWhere = buildProjectScopeWhere(scopeProyecto);
 
   const miembros = await prisma.usuario.findMany({
-    where: { rol: 'MIEMBRO', ...filtroAreaUsuarios },
+    where: { rol: 'FEDERACION', ...filtroAreaUsuarios },
     orderBy: { nombre: 'asc' },
     select: { id: true, nombre: true, area: true }
   });
@@ -415,7 +415,7 @@ const getMemberStats = async (req, res) => {
 
 const getAdminStats = async (req, res) => {
   try {
-    const scopeProyecto = buildScopeProyectoParaAdmin(req.usuario);
+    const scopeProyecto = buildScopeProyectoVisible(req.usuario);
 
     // 1. Estadísticas de Proyectos
     const totalProyectos = await prisma.proyecto.count({ where: scopeProyecto || undefined });

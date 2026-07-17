@@ -81,7 +81,7 @@ const buildGoogleEventPayload = (evento) => {
       evento.descripcion,
       evento.instruccionesAcceso ? `Instrucciones: ${evento.instruccionesAcceso}` : null,
       evento.proyecto?.nombre ? `Proyecto: ${evento.proyecto.nombre}` : null,
-      'Sincronizado desde CRM',
+      'Sincronizado desde FEMIC Maquinaria',
     ].filter(Boolean).join('\n\n'),
     location: evento.modalidad === 'presencial' ? (evento.ubicacion || undefined) : undefined,
     attendees: attendees.length > 0 ? attendees : undefined,

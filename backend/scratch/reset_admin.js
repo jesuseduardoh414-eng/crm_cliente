@@ -14,7 +14,7 @@ async function main() {
       where: { email },
       update: {
         password: hashedPassword,
-        rol: 'ADMIN',
+        rol: 'MESA_DIRECTIVA',
         estado: 'activo',
         verificado: true
       },
@@ -22,7 +22,7 @@ async function main() {
         nombre: 'Administrador',
         email,
         password: hashedPassword,
-        rol: 'ADMIN',
+        rol: 'MESA_DIRECTIVA',
         area: 'ADMINISTRACION',
         estado: 'activo',
         verificado: true

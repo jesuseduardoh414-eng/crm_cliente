@@ -2,7 +2,7 @@
 // DELETE y operaciones destructivas requieren rol ADMIN
 
 const express = require('express');
-const { listar, crear, editar, eliminar, actualizarEstado } = require('../controllers/tareas.controller');
+const { listar, listarPanel, crear, editar, eliminar, actualizarEstado } = require('../controllers/tareas.controller');
 const { importar, vistaPreviaImportacion, confirmarImportacion, plantillaJSON, plantillaExcel, exportarJSON, exportarExcel } = require('../controllers/importar.controller');
 const { verificarToken } = require('../middlewares/auth.middleware');
 const { soloAdmin }      = require('../middlewares/roles.middleware');
@@ -17,9 +17,13 @@ const routerTarea    = express.Router();
 routerProyecto.use(verificarToken);
 routerTarea.use(verificarToken);
 
-//  Plantillas descargables 
+//  Plantillas descargables
 routerTarea.get('/plantilla/json',  plantillaJSON);
 routerTarea.get('/plantilla/excel', plantillaExcel);
+
+// Tareas del panel de noticias (las que no son de ninguna obra).
+// Va antes que /:id, o Express tomaria "panel" por un id.
+routerTarea.get('/panel', listarPanel);
 
 // Listar y crear tareas (cualquier usuario autenticado)
 routerProyecto.get('/exportar/json', exportarJSON);

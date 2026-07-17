@@ -308,8 +308,8 @@ const ModalConfiguracionAgenda = ({ onClose, showToast, initialData = null }) =>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
                   {googleCalendar.connected
-                    ? `Los eventos que crees o edites en el CRM se sincronizarán con ${googleCalendar.email || 'tu calendario principal de Google'}.`
-                    : 'Conecta tu cuenta para enviar automáticamente tus eventos del CRM a tu calendario principal de Google.'}
+                    ? `Los eventos que crees o edites en el panel se sincronizarán con ${googleCalendar.email || 'tu calendario principal de Google'}.`
+                    : 'Conecta tu cuenta para enviar automáticamente tus eventos del panel a tu calendario principal de Google.'}
                 </div>
                 {!googleCalendar.configured && (
                   <div style={{ marginTop: '0.85rem', fontSize: '0.78rem', color: '#b45309', fontWeight: '700' }}>

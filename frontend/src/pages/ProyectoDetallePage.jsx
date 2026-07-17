@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { maquinasService, proyectosService, tareasService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { puedeAdministrar } from '../utils/roles';
 import { usePreferences } from '../context/PreferencesContext';
 import { useToast } from '../context/ToastContext';
 import KanbanView from '../components/KanbanView';
@@ -255,10 +256,11 @@ const ProyectoDetallePage = () => {
   const [proyecto, setProyecto] = useState(null);
   const [tareas, setTareas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  // Misma regla que el backend: un ADMIN, o quien sea miembro de la obra.
-  // Si el backend dice que no, responde 403; esto solo evita enseñar botones
-  // que no van a funcionar.
-  const puedeGestionarMaquinaria = usuario?.rol === 'ADMIN'
+  // Misma regla que el backend: la mesa directiva, o quien sea miembro de la
+  // obra. El consejo supervisa pero no gestiona: si no es miembro, no ve el
+  // botón. Si el backend dice que no, responde 403; esto solo evita enseñar
+  // botones que no van a funcionar.
+  const puedeGestionarMaquinaria = puedeAdministrar(usuario)
     || (usuarios || []).some((u) => u.id === usuario?.id);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(false);
@@ -535,9 +537,9 @@ const ProyectoDetallePage = () => {
           >
             <Download size={18} /> {t('projectExport')}
           </button>
-          {usuario?.rol === 'ADMIN' && (
-            <button 
-              onClick={() => setModalPlantilla(true)} 
+          {puedeAdministrar(usuario) && (
+            <button
+              onClick={() => setModalPlantilla(true)}
               className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-5 py-3 lg:py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs lg:text-sm font-black text-[var(--color-text-dim)] hover:bg-[var(--color-surface-3)] transition-all shadow-sm"
             >
               <Save size={18} /> {t('projectSaveTemplate')}

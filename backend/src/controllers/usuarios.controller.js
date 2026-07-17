@@ -1,7 +1,7 @@
 const prisma = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const { sortTareas } = require('../utils/sort.utils');
-const { esAdmin, esAdminDeArea, puedeGestionarArea } = require('../utils/permissions.utils');
+const { puedeAdministrar, veTodo, administraUnArea, puedeGestionarArea, normalizarRol } = require('../utils/permissions.utils');
 
 const finDelDia = (fecha) => {
   const d = new Date(fecha);
@@ -277,7 +277,7 @@ let ultimaActualizacion = 0;
 const CACHE_TTL = 30000; // 30 segundos
 
 const obtenerFiltroUsuariosGestion = (usuario) => (
-  esAdminDeArea(usuario) ? { area: usuario.area } : {}
+  administraUnArea(usuario) ? { area: usuario.area } : {}
 );
 
 // Devuelve todos los usuarios con su actividad pre-calculada de forma eficiente
@@ -286,18 +286,22 @@ const listar = async (req, res) => {
     const ahoraMs = Date.now();
     const filtroGestion = obtenerFiltroUsuariosGestion(req.usuario);
     
+    // La actividad enriquecida la ven quienes ven todo (consejo y mesa). El
+    // caché global solo sirve a quien no filtra por área.
+    const veActividadCompleta = veTodo(req.usuario);
+
     // Si hay datos en caché y no han expirado, devolverlos de inmediato
     if (
       cacheUsuarios
       && (ahoraMs - ultimaActualizacion < CACHE_TTL)
-      && req.usuario?.rol === 'ADMIN'
-      && !esAdminDeArea(req.usuario)
+      && veActividadCompleta
+      && !administraUnArea(req.usuario)
     ) {
       return res.json({ usuarios: cacheUsuarios, cached: true });
     }
 
     const usuarios = await prisma.usuario.findMany({
-      where: req.usuario?.rol === 'ADMIN' ? filtroGestion : undefined,
+      where: veActividadCompleta ? filtroGestion : undefined,
       orderBy: { nombre: 'asc' },
       select: {
         id:     true,
@@ -311,7 +315,7 @@ const listar = async (req, res) => {
       },
     });
 
-    if (req.usuario?.rol !== 'ADMIN') {
+    if (!veActividadCompleta) {
       return res.json({ usuarios });
     }
 
@@ -567,7 +571,7 @@ const crear = async (req, res) => {
   }
 
   try {
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, area || 'VENTAS')) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, area || 'VENTAS')) {
       return res.status(403).json({ error: 'Solo puedes crear usuarios de tu propia área' });
     }
 
@@ -585,7 +589,8 @@ const crear = async (req, res) => {
         email:  email.toLowerCase().trim(),
         password: hashedPassword,
         area: area || 'VENTAS',
-        rol:  rol  || 'MIEMBRO',
+        // normalizarRol saca cualquier valor raro y cae a FEDERACION.
+        rol:  normalizarRol(rol),
         verificado: false,
         verificationToken,
         verificationTokenExpires: new Date(Date.now() + 48 * 60 * 60 * 1000) // 48 horas
@@ -633,11 +638,11 @@ const editar = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, objetivo.area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, objetivo.area)) {
       return res.status(403).json({ error: 'Solo puedes editar usuarios de tu propia área' });
     }
 
-    if (esAdminDeArea(req.usuario) && area && !puedeGestionarArea(req.usuario, area)) {
+    if (administraUnArea(req.usuario) && area && !puedeGestionarArea(req.usuario, area)) {
       return res.status(403).json({ error: 'No puedes mover usuarios a otra área' });
     }
 
@@ -645,7 +650,9 @@ const editar = async (req, res) => {
       nombre: nombre?.trim(),
       email:  email?.toLowerCase().trim(),
       area,
-      rol
+      // Solo se toca el rol si viene, y saneado: un valor fuera del enum haria
+      // que Prisma tumbara toda la edicion.
+      ...(rol !== undefined ? { rol: normalizarRol(rol) } : {}),
     };
 
     // Si envía password, se encripta
@@ -684,7 +691,7 @@ const eliminar = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, usuarioABorrar.area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, usuarioABorrar.area)) {
       return res.status(403).json({ error: 'Solo puedes eliminar usuarios de tu propia área' });
     }
 
@@ -755,7 +762,7 @@ const toggleEstado = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, objetivo.area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, objetivo.area)) {
       return res.status(403).json({ error: 'Solo puedes cambiar el estado de usuarios de tu propia área' });
     }
 
@@ -792,7 +799,7 @@ const actividad = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (esAdminDeArea(req.usuario) && !puedeGestionarArea(req.usuario, usuario.area)) {
+    if (administraUnArea(req.usuario) && !puedeGestionarArea(req.usuario, usuario.area)) {
       return res.status(403).json({ error: 'Solo puedes consultar actividad de usuarios de tu propia área' });
     }
 

@@ -213,7 +213,7 @@ const InvitationPage = () => {
             </button>
 
             <p className="text-center text-xs text-slate-400">
-              Al activar tu cuenta, aceptas los términos de uso y políticas de privacidad del CRM.
+              Al activar tu cuenta, aceptas los términos de uso y políticas de privacidad del panel.
             </p>
           </form>
         </div>

@@ -49,6 +49,7 @@ const PerfilPage = lazyRetry(() => import('./pages/PerfilPage'), 'perfil');
 const MaquinariaPage = lazyRetry(() => import('./pages/MaquinariaPage'), 'maquinaria');
 const OperadoresPage = lazyRetry(() => import('./pages/OperadoresPage'), 'operadores');
 const PanelNoticiasPage = lazyRetry(() => import('./pages/PanelNoticiasPage'), 'noticias');
+const TareasPanelPage = lazyRetry(() => import('./pages/TareasPanelPage'), 'tareas_panel');
 
 // Redirige al dashboard si ya hay sesion activa (evita volver al login)
 const RutaPublica = ({ children }) => {
@@ -101,6 +102,7 @@ const AppRoutes = () => (
     <Route path="/maquinaria" element={<RutaConLayout><MaquinariaPage /></RutaConLayout>} />
     <Route path="/operadores" element={<RutaConLayout><OperadoresPage /></RutaConLayout>} />
     <Route path="/noticias" element={<RutaConLayout><PanelNoticiasPage /></RutaConLayout>} />
+    <Route path="/tareas" element={<RutaConLayout><TareasPanelPage /></RutaConLayout>} />
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>

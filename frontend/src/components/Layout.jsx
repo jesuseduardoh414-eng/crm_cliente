@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { useToast } from '../context/ToastContext';
+import { puedeAdministrar } from '../utils/roles';
 import NotificationCenter from './NotificationCenter';
 import { BRAND_NAME, BRAND_SHORT } from '../config/brand';
 import { agendaService, getPublicAssetUrl } from '../services/api';
@@ -14,6 +15,7 @@ import {
   Forklift,
   HardHat,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Megaphone,
   Menu,
@@ -34,6 +36,7 @@ const IconAgenda = () => <Calendar size={20} strokeWidth={2.5} />;
 const IconMaquinaria = () => <Forklift size={20} strokeWidth={2.5} />;
 const IconOperadores = () => <HardHat size={20} strokeWidth={2.5} />;
 const IconNoticias = () => <Megaphone size={20} strokeWidth={2.5} />;
+const IconTareas = () => <ListChecks size={20} strokeWidth={2.5} />;
 
 const getInitials = (nombre = '') => (
   nombre
@@ -47,6 +50,7 @@ const getInitials = (nombre = '') => (
 const navLinks = [
   { to: '/dashboard', labelKey: 'home', Icon: IconDashboard },
   { to: '/noticias', labelKey: 'newsPanel', Icon: IconNoticias },
+  { to: '/tareas', labelKey: 'panelTasks', Icon: IconTareas },
   { to: '/maquinaria', labelKey: 'machinery', Icon: IconMaquinaria },
   { to: '/operadores', labelKey: 'operators', Icon: IconOperadores },
   { to: '/proyectos', labelKey: 'projects', Icon: IconProyectos },
@@ -93,7 +97,7 @@ const Layout = ({ children }) => {
             showToast(msg, 'info');
 
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('CRM - Recordatorio', { body: msg, icon: '/favicon.svg' });
+              new Notification(`${BRAND_NAME} - Recordatorio`, { body: msg, icon: '/favicon.svg' });
             }
 
             yaNotificados.push(recordatorio.id);
@@ -228,7 +232,7 @@ const Layout = ({ children }) => {
             );
           })}
 
-          {usuario?.rol === 'ADMIN' && (
+          {puedeAdministrar(usuario) && (
             <>
               {!collapsed && (
                 <div className="text-[10px] font-black text-white/30 px-3 py-4 mt-4 uppercase tracking-widest whitespace-nowrap">

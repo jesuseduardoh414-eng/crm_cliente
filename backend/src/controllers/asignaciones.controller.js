@@ -5,7 +5,7 @@
 // del proyecto: quien puede administrar la obra decide su maquinaria.
 
 const prisma = require('../lib/prisma');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 const { registrarActividad } = require('../utils/logger');
 
 const INCLUDE_ASIGNACION = {
@@ -18,8 +18,9 @@ const INCLUDE_ASIGNACION = {
   },
   operador: {
     select: {
-      id: true, nombre: true, email: true, telefono: true, rol: true, fotoPerfilUrl: true,
-      perfilOperador: { select: { especialidad: true, disponible: true, zona: true, telefonoContacto: true } },
+      id: true, nombre: true, especialidad: true, disponible: true,
+      zona: true, telefonoContacto: true,
+      adjuntos: { select: { id: true, url: true }, orderBy: { orden: 'asc' }, take: 1 },
     },
   },
   creadoPor: { select: { id: true, nombre: true } },
@@ -35,7 +36,7 @@ const parseFecha = (valor) => {
 // El permiso es el del proyecto: si puedes administrar la obra, decides su
 // maquinaria. Los MIEMBRO del proyecto tambien, porque son quienes la trabajan.
 const puedeGestionarMaquinariaDe = async (usuario, proyecto) => {
-  if (esAdmin(usuario)) return puedeAdministrarProyecto(usuario, proyecto);
+  if (puedeAdministrar(usuario)) return puedeAdministrarProyecto(usuario, proyecto);
   const miembro = await prisma.proyecto.findFirst({
     where: { id: proyecto.id, miembros: { some: { id: usuario.id } } },
     select: { id: true },
@@ -91,12 +92,8 @@ const crear = async (req, res) => {
     if (operadorId !== undefined && operadorId !== null && operadorId !== '') {
       oid = Number(operadorId);
       if (!Number.isInteger(oid)) return res.status(400).json({ error: 'El operador indicado no es válido' });
-      const operador = await prisma.usuario.findUnique({ where: { id: oid }, select: { id: true, rol: true } });
+      const operador = await prisma.operador.findUnique({ where: { id: oid }, select: { id: true } });
       if (!operador) return res.status(404).json({ error: 'El operador indicado no existe' });
-      // Si no se comprueba, se podria "asignar como operador" a cualquiera.
-      if (operador.rol !== 'OPERADOR') {
-        return res.status(400).json({ error: 'El usuario indicado no tiene rol de operador' });
-      }
     }
 
     const dInicio = parseFecha(fechaInicio);
@@ -164,11 +161,8 @@ const actualizar = async (req, res) => {
       } else {
         const oid = Number(operadorId);
         if (!Number.isInteger(oid)) return res.status(400).json({ error: 'El operador indicado no es válido' });
-        const operador = await prisma.usuario.findUnique({ where: { id: oid }, select: { id: true, rol: true } });
+        const operador = await prisma.operador.findUnique({ where: { id: oid }, select: { id: true } });
         if (!operador) return res.status(404).json({ error: 'El operador indicado no existe' });
-        if (operador.rol !== 'OPERADOR') {
-          return res.status(400).json({ error: 'El usuario indicado no tiene rol de operador' });
-        }
         operadorData = { operadorId: oid };
       }
     }
@@ -234,16 +228,16 @@ const eliminar = async (req, res) => {
   }
 };
 
-// Operadores a los que se puede asignar: usuarios con rol OPERADOR y perfil.
+// Operadores a los que se puede asignar maquinaria: todas las fichas del
+// catalogo. Tambien las ocupadas, porque asignar es justo lo que las ocupa.
 const operadoresDisponibles = async (_req, res) => {
   try {
-    const operadores = await prisma.usuario.findMany({
-      where: { rol: 'OPERADOR', estado: 'activo' },
+    const operadores = await prisma.operador.findMany({
       select: {
-        id: true, nombre: true, email: true, fotoPerfilUrl: true,
-        perfilOperador: { select: { especialidad: true, disponible: true, zona: true } },
+        id: true, nombre: true, especialidad: true, disponible: true, zona: true,
+        adjuntos: { select: { id: true, url: true }, orderBy: { orden: 'asc' }, take: 1 },
       },
-      orderBy: { nombre: 'asc' },
+      orderBy: [{ disponible: 'desc' }, { nombre: 'asc' }],
     });
     return res.json({ operadores });
   } catch (error) {

@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { veTodo } from '../utils/roles';
 import { proyectosService } from '../services/api';
 import { PageSkeleton } from '../components/Skeleton';
 import UserAvatar from '../components/UserAvatar';
@@ -32,8 +33,9 @@ const AREA_CONF = {
 };
 
 const ROL_CONF = {
-  ADMIN:   { labelKey: 'roleAdmin',   color: '#818cf8', bg: 'rgba(129,140,248,0.08)' },
-  MIEMBRO: { labelKey: 'roleMember',  color: '#94a3b8', bg: 'rgba(148,163,184,0.08)' },
+  CONSEJO:        { labelKey: 'roleConsejo', color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
+  MESA_DIRECTIVA: { labelKey: 'roleMesa',    color: '#818cf8', bg: 'rgba(129,140,248,0.08)' },
+  FEDERACION:     { labelKey: 'roleFederacion', color: '#94a3b8', bg: 'rgba(148,163,184,0.08)' },
 };
 
 const ESTADO_COLOR = {
@@ -46,7 +48,7 @@ const ESTADO_COLOR = {
 const MiembroCard = ({ miembro }) => {
   const { t } = usePreferences();
   const areaConf = AREA_CONF[miembro.area] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', icon: <User size={16} />, labelKey: 'areaGeneral' };
-  const rolConf  = ROL_CONF[miembro.rol] || ROL_CONF.MIEMBRO;
+  const rolConf  = ROL_CONF[miembro.rol] || ROL_CONF.FEDERACION;
   const pct      = miembro.tareas.total > 0
     ? Math.round((miembro.tareas.hechas / miembro.tareas.total) * 100)
     : 0;
@@ -227,7 +229,7 @@ const EquipoPage = () => {
   const [datos, setDatos]         = useState([]); // [{ proyecto, equipo }]
   const [cargando, setCargando]   = useState(true);
   const [error, setError]         = useState('');
-  const esAdmin = usuario?.rol === 'ADMIN';
+  const veResumenGlobal = veTodo(usuario);
 
   useEffect(() => {
     const cargar = async () => {
@@ -261,7 +263,7 @@ const EquipoPage = () => {
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2.2rem', fontWeight: '900', marginBottom: '0.25rem' }}>{t('teamTitle')}</h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '1.15rem' }}>
-          {esAdmin
+          {veResumenGlobal
             ? t('teamSummary', { members: totalMiembros, memberLabel: totalMiembros !== 1 ? t('teamMemberPlural') : t('teamMemberSingular'), projects: datos.length, projectLabel: datos.length !== 1 ? t('teamProjectPlural') : t('teamProjectSingular') })
             : `${t('projectList')} ${datos.length} ${datos.length !== 1 ? t('teamProjectPlural') : t('teamProjectSingular')}`
           }

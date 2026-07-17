@@ -1,5 +1,5 @@
 const prisma = require('../lib/prisma');
-const { esAdmin, puedeAdministrarProyecto } = require('../utils/permissions.utils');
+const { puedeAdministrar, veTodo, puedeAdministrarProyecto } = require('../utils/permissions.utils');
 
 const listarPorProyecto = async (req, res) => {
   const proyectoId = parseInt(req.params.id);
@@ -13,8 +13,10 @@ const listarPorProyecto = async (req, res) => {
 
     if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
 
-    const usuarioEsAdmin = esAdmin(req.usuario);
-    if (usuarioEsAdmin && !puedeAdministrarProyecto(req.usuario, proyecto)) {
+    // El historial completo lo ven el consejo y la mesa; el resto, solo lo que
+    // toca sus tareas.
+    const veTodoElHistorial = veTodo(req.usuario);
+    if (puedeAdministrar(req.usuario) && !puedeAdministrarProyecto(req.usuario, proyecto)) {
       return res.status(403).json({ error: 'No tienes permiso para ver el historial de este proyecto' });
     }
     const accionesSoloDeTarea = [
@@ -27,7 +29,7 @@ const listarPorProyecto = async (req, res) => {
     const logs = await prisma.logActividad.findMany({
       where: {
         proyectoId,
-        ...(usuarioEsAdmin ? {} : {
+        ...(veTodoElHistorial ? {} : {
           OR: [
             {
               tareaId: null,

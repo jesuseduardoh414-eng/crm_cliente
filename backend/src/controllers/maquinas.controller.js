@@ -3,7 +3,7 @@
 // Editar -> solo el propietario de la maquina, o un ADMIN
 
 const prisma = require('../lib/prisma');
-const { esAdmin } = require('../utils/permissions.utils');
+const { puedeAdministrar } = require('../utils/permissions.utils');
 
 const INCLUDE_MAQUINA = {
   propietario: { select: { id: true, nombre: true, email: true, area: true, fotoPerfilUrl: true } },
@@ -42,7 +42,7 @@ const ESTADOS = ['BORRADOR', 'PUBLICADA', 'OCULTA'];
 // quien la dio de alta: en un catalogo compartido cualquiera puede consultar,
 // pero solo el dueño toca lo suyo.
 const puedeEditarMaquina = (usuario, maquina) =>
-  esAdmin(usuario) || maquina.propietarioId === usuario.id;
+  puedeAdministrar(usuario) || maquina.propietarioId === usuario.id;
 
 // El precio llega como texto desde el formulario; Prisma espera un Decimal
 // valido o null. Un string vacio no es 0.

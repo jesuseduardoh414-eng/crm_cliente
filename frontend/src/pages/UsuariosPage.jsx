@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { proyectosService, tareasService, usuariosService, statsService } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { administraUnArea, etiquetaRol } from '../utils/roles';
 import { usePreferences } from '../context/PreferencesContext';
 import { PageSkeleton } from '../components/Skeleton';
 import { 
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react';
 
 const AREAS = ['VENTAS', 'ALMACEN', 'COMPRAS', 'ADMINISTRACION', 'RENTA', 'TALLER'];
-const ROLES = ['MIEMBRO', 'ADMIN'];
+const ROLES = ['FEDERACION', 'MESA_DIRECTIVA', 'CONSEJO'];
 
 const actividadVacia = () => ({
   hechasHoy: [],
@@ -410,9 +411,9 @@ const TablaActivos = ({ usuarios, onEdit, onDelete, onToggleStatus, onLoadActivi
               </td>
               <td className="px-6 py-4">
                 <span className={`text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-lg border ${
-                  u.rol === 'ADMIN' ? 'bg-accent-50 text-accent-700 border-accent-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                  u.rol !== 'FEDERACION' ? 'bg-accent-50 text-accent-700 border-accent-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                 }`}>
-                  {u.rol}
+                  {etiquetaRol(u.rol)}
                 </span>
               </td>
               <td className="px-6 py-4 text-sm text-slate-500 font-medium">
@@ -494,9 +495,9 @@ const TablaActivos = ({ usuarios, onEdit, onDelete, onToggleStatus, onLoadActivi
                 </div>
               </div>
               <div className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
-                u.rol === 'ADMIN' ? 'bg-accent-50 text-accent-700 border-accent-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                u.rol !== 'FEDERACION' ? 'bg-accent-50 text-accent-700 border-accent-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
               }`}>
-                {u.rol}
+                {etiquetaRol(u.rol)}
               </div>
             </div>
             
@@ -585,7 +586,7 @@ const TablaInvitaciones = ({ invitaciones, onResend, onDelete }) => {
               <td className="px-6 py-4">
                 <div className="flex flex-col gap-1">
                    <span className="text-[9px] font-bold text-slate-500 uppercase">{inv.area}</span>
-                   <span className="text-[9px] font-bold text-slate-400 uppercase">{inv.rol}</span>
+                   <span className="text-[9px] font-bold text-slate-400 uppercase">{etiquetaRol(inv.rol)}</span>
                 </div>
               </td>
               <td className="px-6 py-4">
@@ -654,7 +655,7 @@ const TablaInvitaciones = ({ invitaciones, onResend, onDelete }) => {
             <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-200/50">
               <div className="flex flex-col gap-1">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Área / Rol</span>
-                <span className="text-[10px] font-bold text-slate-700">{inv.area} / {inv.rol}</span>
+                <span className="text-[10px] font-bold text-slate-700">{inv.area} / {etiquetaRol(inv.rol)}</span>
               </div>
               <div className="flex flex-col gap-1 text-right">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Expira</span>
@@ -687,9 +688,9 @@ const TablaInvitaciones = ({ invitaciones, onResend, onDelete }) => {
 
 const ModalInvitar = ({ usuarioActual, onClose, onSuccess }) => {
   const { t } = usePreferences();
-  const esAdminArea = usuarioActual?.rol === 'ADMIN' && usuarioActual?.area !== 'ADMINISTRACION';
+  const esAdminArea = administraUnArea(usuarioActual);
   const areasDisponibles = esAdminArea ? [usuarioActual.area] : AREAS;
-  const [form, setForm] = useState({ nombre: '', email: '', area: areasDisponibles[0] || 'VENTAS', rol: 'MIEMBRO' });
+  const [form, setForm] = useState({ nombre: '', email: '', area: areasDisponibles[0] || 'VENTAS', rol: 'FEDERACION' });
   const [cargando, setCargando] = useState(false);
   const { showToast } = useToast();
 
@@ -762,7 +763,7 @@ const ModalInvitar = ({ usuarioActual, onClose, onSuccess }) => {
                 value={form.rol}
                 onChange={e => setForm({...form, rol: e.target.value})}
               >
-                {ROLES.map(r => <option key={r} value={r}>{t(r === 'ADMIN' ? 'roleAdmin' : 'roleMember')}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>{etiquetaRol(r)}</option>)}
               </select>
             </div>
           </div>
@@ -790,13 +791,13 @@ const ModalInvitar = ({ usuarioActual, onClose, onSuccess }) => {
 
 const ModalEditar = ({ usuarioActual, usuario, onClose, onSuccess }) => {
   const { t } = usePreferences();
-  const esAdminArea = usuarioActual?.rol === 'ADMIN' && usuarioActual?.area !== 'ADMINISTRACION';
+  const esAdminArea = administraUnArea(usuarioActual);
   const areasDisponibles = esAdminArea ? [usuarioActual.area] : AREAS;
   const [form, setForm] = useState({
     nombre: usuario?.nombre || '',
     email: usuario?.email || '',
     area: usuario?.area || areasDisponibles[0] || 'VENTAS',
-    rol: usuario?.rol || 'MIEMBRO'
+    rol: usuario?.rol || 'FEDERACION'
   });
   const [cargando, setCargando] = useState(false);
   const { showToast } = useToast();
@@ -865,7 +866,7 @@ const ModalEditar = ({ usuarioActual, usuario, onClose, onSuccess }) => {
                 value={form.rol}
                 onChange={e => setForm({...form, rol: e.target.value})}
               >
-                {ROLES.map(r => <option key={r} value={r}>{t(r === 'ADMIN' ? 'roleAdmin' : 'roleMember')}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>{etiquetaRol(r)}</option>)}
               </select>
             </div>
           </div>

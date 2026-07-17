@@ -8,13 +8,13 @@ const enviarInvitacion = async ({ nombre, email, token }) => {
   console.log(`[SMTP]: Intentando enviar invitación a ${email}...`);
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || '"Panel Interno" <jesuseduardoh414@gmail.com>',
+    from: process.env.EMAIL_FROM || '"FEMIC Maquinaria" <jesuseduardoh414@gmail.com>',
     to: email,
-    subject: 'Te han invitado al CRM',
+    subject: 'Te han invitado al panel de FEMIC Maquinaria',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
         <h2 style="color: #333;">Hola ${nombre},</h2>
-        <p>Has sido invitado a unirte al CRM de tu equipo.</p>
+        <p>Has sido invitado a unirte al panel interno de FEMIC Maquinaria.</p>
         <p>Este enlace expira en 48 horas.</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${enlace}"

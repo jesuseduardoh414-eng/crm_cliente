@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { proyectosService, statsService } from '../services/api';
+import { veTodo } from '../utils/roles';
 import { usePreferences } from '../context/PreferencesContext';
 import { PageSkeleton } from '../components/Skeleton';
 import {
@@ -1885,7 +1886,9 @@ const DashboardAdmin = () => {
 
 const DashboardPage = () => {
   const { usuario } = useAuth();
-  return usuario?.rol === 'ADMIN' ? <DashboardAdmin /> : <DashboardMiembro usuario={usuario} />;
+  // Consejo y mesa ven el panel de conjunto; la federación, el suyo. El consejo
+  // supervisa: mira los mismos números que la mesa aunque no administre.
+  return veTodo(usuario) ? <DashboardAdmin /> : <DashboardMiembro usuario={usuario} />;
 };
 
 export default DashboardPage;
